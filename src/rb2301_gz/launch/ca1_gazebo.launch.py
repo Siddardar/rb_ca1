@@ -33,8 +33,14 @@ def generate_launch_description():
     # for loading the model
     env_gz = SetEnvironmentVariable("GAZEBO_MODEL_PATH", pkg_rb2301_gz)
     ld.add_action(env_gz)
-    env_lib_gl = SetEnvironmentVariable("LIBGL_ALWAYS_SOFTWARE", "0") # 1 for VBox Users, 0 for non-Vbox users
-    ld.add_action(env_lib_gl) # FOR VBOX USERS
+    # Software rendering (Mesa llvmpipe) for VMs without a GL 3.3 driver
+    # (VirtualBox, UTM/QEMU on Apple Silicon). Comment out on a machine with a real GPU.
+    # NOTE: do NOT use LIBGL_ALWAYS_SOFTWARE=1 for this -- on Mesa 25 it segfaults inside
+    # OGRE-Next's EGL device enumeration (driCreateNewScreen3) when a hardware DRM device exists.
+    env_lib_gl = SetEnvironmentVariable("LIBGL_ALWAYS_SOFTWARE", "0")
+    ld.add_action(env_lib_gl)
+    env_mesa = SetEnvironmentVariable("MESA_LOADER_DRIVER_OVERRIDE", "kms_swrast")
+    ld.add_action(env_mesa)
 
     # world
     arg_world = DeclareLaunchArgument(
