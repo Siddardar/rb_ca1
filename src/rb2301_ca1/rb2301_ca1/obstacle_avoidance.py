@@ -4,6 +4,7 @@ from rclpy.node import Node
 from rclpy.logging import set_logger_level, LoggingSeverity
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
 
 np.set_printoptions(
     2, suppress=True
@@ -22,6 +23,9 @@ class ObstacleAvoidanceNode(Node):
         self.pub_cmd_vel = self.create_publisher(Twist, "cmd_vel", 10)  # Publish to cmd_vel node
         self.sub_scan = self.create_subscription(LaserScan, "scan", self.sub_scan_callback, 2) # The subscriber to the Lidar ranges.
         self.last_scan = None # Copied laser scan message
+        self.sub_odom = self.create_subscription(Odometry, "odom", self.sub_odom_callback, 2) # robot pose from wheel odometry
+        self.yaw = None # current heading in world frame (deg), None until first odom msg
+        self.goal_yaw = None # heading we want to keep (deg); locked to the first odom reading
 
         self.timer = self.create_timer(0.05, self.timer_callback)  # Runs at 20Hz. Can be changed.
 
@@ -32,6 +36,7 @@ class ObstacleAvoidanceNode(Node):
         self.SAFE_DIST = 0.4
         self.HEADINGS = np.arange(-90, 91, 5) # dir to check from center (min, max + 1, step size)
         self.SWITCH_PENALTY = 0.5 # cost per deg of changing heading; higher = more committed to last heading
+        self.YAW_GAIN = 0.05 # rad/s of turn per deg of yaw error; higher = snaps back to goal heading faster
 
         self.margin = 0.05
         self.ROBOT_WIDTH = 0.20 + self.margin
@@ -55,6 +60,19 @@ class ObstacleAvoidanceNode(Node):
         scan[bad] = msg.range_max
         self.last_scan = scan
         self.idx_per_deg = 1 / np.rad2deg(msg.angle_increment)
+
+    def sub_odom_callback(self, msg):
+        """Odom subscriber: extract yaw (rotation about z) from the orientation"""
+        q = msg.pose.pose.orientation
+        self.yaw = np.rad2deg(np.arctan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y**2 + q.z**2)))
+        if self.goal_yaw is None:
+            self.goal_yaw = self.yaw # goal face dir is first one
+
+    def yaw_error(self):
+        """Degrees to rotate anticlockwise to face goal_yaw, wrapped to [-180, 180]. 0 if no odom yet."""
+        if self.yaw is None:
+            return 0.0
+        return (self.goal_yaw - self.yaw + 180) % 360 - 180
 
     def corridor(self, heading_deg, corridor_width):
         """Distance to nearest reading in a corridor along heading"""
@@ -85,6 +103,9 @@ class ObstacleAvoidanceNode(Node):
         if self.last_scan is None:
             return # Does not run if the laser message is not received.
 
+        err = self.yaw_error() # +ve: goal is anticlockwise of where the lidar points
+        turn = self.YAW_GAIN * err # pull back back to the goal heading every tick
+
         # already turning: keep turning until straight ahead clears, ignore everything else
         if self.turn_dir is not None:
             if self.corridor(0, self.ROBOT_WIDTH) > self.SAFE_DIST:
@@ -107,16 +128,19 @@ class ObstacleAvoidanceNode(Node):
             self.move_2D(0, 0, self.turn_dir * max_turn_velocity)
             return
 
-        # prefer straight ahead, but penalise flipping away from the heading chosen last -> prevents switching every tick
-        cost = np.abs(open_headings) + self.SWITCH_PENALTY * np.abs(open_headings - self.last_heading)
+        # the goal direction as seen by the lidar (clamped to the front half we actually search)
+        goal_heading = np.clip(err, self.HEADINGS[0], self.HEADINGS[-1])
+
+        # prefer the goal direction, but penalise flipping away from the heading chosen last -> prevents switching every tick
+        cost = np.abs(open_headings - goal_heading) + self.SWITCH_PENALTY * np.abs(open_headings - self.last_heading)
         heading = float(open_headings[np.argmin(cost)])
         self.last_heading = heading
 
-        self.get_logger().debug(f"heading: {heading:.0f} deg, clearance: {clearance[self.HEADINGS == heading][0]:.2f} m")
+        self.get_logger().debug(f"heading: {heading:.0f} deg, yaw err: {err:.0f} deg, clearance: {clearance[self.HEADINGS == heading][0]:.2f} m")
 
-        # slide along the chosen heading without rotating -> ensures lidar alw points in same dir
+        # slide along the chosen heading and the turn term rotates back toward the goal heading
         rad = np.deg2rad(heading)
-        self.move_2D(max_translate_velocity * np.cos(rad), max_translate_velocity * np.sin(rad), 0)
+        self.move_2D(max_translate_velocity * np.cos(rad), max_translate_velocity * np.sin(rad), turn)
 
 def main(args=None):
     rclpy.init(args=args)

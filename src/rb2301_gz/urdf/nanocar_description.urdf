@@ -468,6 +468,19 @@
     </plugin>
   </gazebo>
 
+  <!-- Publishes the model's pose as odometry on /odom (bridged to ROS in ca1_gazebo.launch.py) -->
+  <gazebo>
+    <plugin
+        filename="gz-sim-odometry-publisher-system"
+        name="gz::sim::systems::OdometryPublisher">
+        <odom_frame>odom</odom_frame>
+        <robot_base_frame>base_footprint</robot_base_frame>
+        <odom_topic>/odom</odom_topic>
+        <odom_publish_frequency>20</odom_publish_frequency>
+        <dimensions>2</dimensions>
+    </plugin>
+  </gazebo>
+
 
 
   <!-- <gazebo>
