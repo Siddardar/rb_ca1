@@ -26,11 +26,16 @@ class ObstacleAvoidanceNode(Node):
         self.timer = self.create_timer(0.05, self.timer_callback)  # Runs at 20Hz. Can be changed.
 
         self.idx_per_deg = None # calc the number of indexes in scan array that correspond to 1 deg
-        self.horizontal_dir = None # set a horizontal dir so robot doesn't oscilate
+        self.last_heading = 0.0 # heading (deg) chosen last tick, so robot doesn't flip between equal gaps
         self.turn_dir = None # set a turn dir when stuck, kept until front clears
 
-        self.ANGLE = 30 # angle of cone
         self.SAFE_DIST = 0.4
+        self.HEADINGS = np.arange(-90, 91, 5) # dir to check from center (min, max + 1, step size)
+        self.SWITCH_PENALTY = 0.5 # cost per deg of changing heading; higher = more committed to last heading
+
+        self.margin = 0.05
+        self.ROBOT_WIDTH = 0.20 + self.margin
+        self.ROBOT_LEN = 0.30 + self.margin
 
     def move_2D(self, x: float = 0.0, y: float = 0.0, turn: float = 0.0):
         """Publishes a twist command to move in 2D space. +ve x is forwards, +ve y is left, and +ve turn is anticlockwise"""
@@ -44,71 +49,74 @@ class ObstacleAvoidanceNode(Node):
 
     def sub_scan_callback(self, msg):
         """Scan subscriber"""
-        self.last_scan = np.array(msg.ranges) # keep full scan
+        scan = np.array(msg.ranges) # keep full scan
+        # inf / nan / below-min readings all mean "nothing seen"; treat as max range so the maths stays finite
+        bad = ~np.isfinite(scan) | (scan < msg.range_min)
+        scan[bad] = msg.range_max
+        self.last_scan = scan
         self.idx_per_deg = 1 / np.rad2deg(msg.angle_increment)
 
-    def cone(self, center_deg, angle_deg):
-        """Return scan readings within +- angle of center"""
-        low = int((center_deg - angle_deg) * self.idx_per_deg) 
-        high = int((center_deg + angle_deg) * self.idx_per_deg)
+    def corridor(self, heading_deg, corridor_width):
+        """Distance to nearest reading in a corridor along heading"""
+        n = len(self.last_scan)
 
-        idx = np.arange(low, high + 1) % int(360 * self.idx_per_deg)
+        # angles (in rad for np.sin/np.cos) in corridor dir
+        angles = np.deg2rad(np.arange(n) / self.idx_per_deg - heading_deg) 
 
-        return self.last_scan[idx]
+        fwd = self.last_scan * np.cos(angles)
+        lat = self.last_scan * np.sin(angles)
+
+        # cos 90 - 270 < 0 => fwd > 0 is what we care about since angles are relative to corridor dir anyway
+        # also if lateral dis < width / 2 its in path
+        in_path = (fwd > 0) & (np.abs(lat) < corridor_width / 2) # boolean arr
+
+        # fwd[in_path] acts like a boolean mask keeping only values in fwd that have a corresponding True in in_path
+        # returns the closest object in dir of corridor if any exists
+        return np.min(fwd[in_path]) if in_path.any() else np.inf
+        
+    def footprint_width(self, heading_deg):
+        """Width of the robot's footprint perpendicular to heading_deg (bounding box projection)"""
+        rad = np.deg2rad(heading_deg)
+        return self.ROBOT_WIDTH * abs(np.cos(rad)) + self.ROBOT_LEN * abs(np.sin(rad))
 
     def timer_callback(self):
         """Controller loop"""
 
         if self.last_scan is None:
             return # Does not run if the laser message is not received.
-        
-        ######################## MODIFY CODE HERE ########################
 
-        front_cone = self.cone(0, self.ANGLE)
-        left_cone = self.cone(90, self.ANGLE)
-        right_cone = self.cone(270, self.ANGLE)
-
-        min_front = np.min(front_cone)
-        min_left = np.min(left_cone)
-        min_right = np.min(right_cone)  
-
-        self.get_logger().debug(f"min_front: {min_front}, min_left: {min_left}, min_right: {min_right}")
-
-        # move forward as much as possible
-        if min_front > self.SAFE_DIST:
-            self.horizontal_dir = None
-            self.turn_dir = None
-            self.move_2D(max_translate_velocity, 0, 0)
-            return 
-
-        # already turning: keep turning until front clears, ignore sides
+        # already turning: keep turning until straight ahead clears, ignore everything else
         if self.turn_dir is not None:
+            if self.corridor(0, self.ROBOT_WIDTH) > self.SAFE_DIST:
+                self.turn_dir = None
+                self.last_heading = 0.0
+            else:
+                self.move_2D(0, 0, self.turn_dir * max_turn_velocity)
+                return
+
+        # clearance along every candidate heading
+        clearance = np.array([self.corridor(h, self.footprint_width(h)) for h in self.HEADINGS])
+        open_headings = self.HEADINGS[clearance > self.SAFE_DIST]
+
+        # stuck: nothing open in the front half, commit to a turn dir
+        if len(open_headings) == 0:
+            left_room = np.max(clearance[self.HEADINGS > 0])
+            right_room = np.max(clearance[self.HEADINGS < 0])
+            self.turn_dir = 1 if left_room > right_room else -1
+            self.get_logger().debug("stuck :( turning")
             self.move_2D(0, 0, self.turn_dir * max_turn_velocity)
             return
 
-        # if curr horizontal dir is blocked, reset
-        if self.horizontal_dir is not None:
-            chosen_dir = min_left if self.horizontal_dir == 1 else min_right
-            if chosen_dir <= self.SAFE_DIST:
-                self.horizontal_dir = None
+        # prefer straight ahead, but penalise flipping away from the heading chosen last -> prevents switching every tick
+        cost = np.abs(open_headings) + self.SWITCH_PENALTY * np.abs(open_headings - self.last_heading)
+        heading = float(open_headings[np.argmin(cost)])
+        self.last_heading = heading
 
-        # pick best possible horizontal dir
-        if self.horizontal_dir is None:
-            if max(min_left, min_right) > self.SAFE_DIST:
-                self.horizontal_dir = 1 if min_left > min_right else -1
+        self.get_logger().debug(f"heading: {heading:.0f} deg, clearance: {clearance[self.HEADINGS == heading][0]:.2f} m")
 
-        if self.horizontal_dir is not None:
-            self.move_2D(0, self.horizontal_dir * max_translate_velocity, 0)
-            return
-
-        # stuck: turn and see if can find better path and go straight
-        self.get_logger().debug("stuck :(")
-        self.horizontal_dir = None
-        self.turn_dir = 1 if min_left > min_right else -1
-        self.move_2D(0, 0, self.turn_dir * max_turn_velocity)
-
-        ######################## MODIFY CODE HERE ########################
-
+        # slide along the chosen heading without rotating -> ensures lidar alw points in same dir
+        rad = np.deg2rad(heading)
+        self.move_2D(max_translate_velocity * np.cos(rad), max_translate_velocity * np.sin(rad), 0)
 
 def main(args=None):
     rclpy.init(args=args)
