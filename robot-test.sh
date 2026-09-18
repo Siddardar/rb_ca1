@@ -21,32 +21,37 @@ ROBOT_PASS="bingda"
 
 LOCAL_SRC="$HOME/Projects/rb2301_ca1/src/rb2301_ca1"
 
-REMOTE_WS="~/Downloads/rb2301_ca1-11"
+REMOTE_WS="/home/bingda/Downloads/rb2301_ca1-11"
 REMOTE_SRC="$REMOTE_WS/src"
 
-PID_FILE="/tmp/rb2301_obstacle.pid"
+# Shared control files on robot
 START_FILE="/tmp/rb2301_obstacle.start"
+PID_FILE="/tmp/rb2301_obstacle.pid"
+QUIT_FILE="/tmp/rb2301_quit"
 
 SSH="sshpass -p ${ROBOT_PASS} ssh -o StrictHostKeyChecking=no"
 RSYNC_RSH="sshpass -p ${ROBOT_PASS} ssh -o StrictHostKeyChecking=no"
+
 
 echo "================================"
 echo "Robot: BINGDA-0${ROBOT_NUM}"
 echo "IP:    ${ROBOT_IP}"
 echo "================================"
 
-# --------------------------------------------------
+
+# ==================================================
 # 1. Create workspace
-# --------------------------------------------------
+# ==================================================
 
 echo "Creating workspace..."
 
 $SSH "${ROBOT_USER}@${ROBOT_IP}" \
     "mkdir -p ${REMOTE_SRC}"
 
-# --------------------------------------------------
-# 2. Sync source code
-# --------------------------------------------------
+
+# ==================================================
+# 2. Sync source
+# ==================================================
 
 echo "Syncing source..."
 
@@ -55,9 +60,10 @@ rsync -auvx --delete \
     "$LOCAL_SRC" \
     "${ROBOT_USER}@${ROBOT_IP}:${REMOTE_SRC}"
 
-# --------------------------------------------------
+
+# ==================================================
 # 3. Build
-# --------------------------------------------------
+# ==================================================
 
 echo "Building workspace..."
 
@@ -66,18 +72,21 @@ $SSH "${ROBOT_USER}@${ROBOT_IP}" "
     colcon build --symlink-install
 "
 
-echo "Build complete."
 
-# --------------------------------------------------
-# 4. Clean old obstacle-control files
-# --------------------------------------------------
+# ==================================================
+# 4. Remove old control files
+# ==================================================
 
 $SSH "${ROBOT_USER}@${ROBOT_IP}" "
-    rm -f ${PID_FILE}
     rm -f ${START_FILE}
+    rm -f ${PID_FILE}
+    rm -f ${QUIT_FILE}
 "
 
+
+echo "Build complete."
 echo "Opening terminals..."
+
 
 # ==================================================
 # TERMINAL 1 — BASE CONTROL
@@ -89,12 +98,39 @@ gnome-terminal \
         sshpass -p '${ROBOT_PASS}' ssh \
         -o StrictHostKeyChecking=no \
         -tt ${ROBOT_USER}@${ROBOT_IP} \
-        'cd ${REMOTE_WS} &&
-         source install/setup.bash &&
-         ros2 launch base_control_ros2 base_control.launch.py';
+        \"bash -c '
 
-        exec bash
+            cd ${REMOTE_WS}
+            source install/setup.bash
+
+            echo \\\"Starting Base Control...\\\"
+
+            setsid ros2 launch \
+                base_control_ros2 \
+                base_control.launch.py \
+                </dev/null &
+
+            PID=\\\$!
+
+            while kill -0 \\\$PID 2>/dev/null; do
+
+                if [ -f ${QUIT_FILE} ]; then
+                    echo
+                    echo \\\"[GLOBAL SHUTDOWN]\\\"
+
+                    kill -INT -- -\\\$PID 2>/dev/null || true
+                    wait \\\$PID 2>/dev/null || true
+
+                    break
+                fi
+
+                sleep 0.2
+
+            done
+
+        '\"
     "
+
 
 # ==================================================
 # TERMINAL 2 — LIDAR
@@ -106,18 +142,42 @@ gnome-terminal \
         sshpass -p '${ROBOT_PASS}' ssh \
         -o StrictHostKeyChecking=no \
         -tt ${ROBOT_USER}@${ROBOT_IP} \
-        'cd ${REMOTE_WS} &&
-         source install/setup.bash &&
-         ros2 launch rplidar_ros rplidar.launch.py';
+        \"bash -c '
 
-        exec bash
+            cd ${REMOTE_WS}
+            source install/setup.bash
+
+            echo \\\"Starting LiDAR...\\\"
+
+            setsid ros2 launch \
+                rplidar_ros \
+                rplidar.launch.py \
+                </dev/null &
+
+            PID=\\\$!
+
+            while kill -0 \\\$PID 2>/dev/null; do
+
+                if [ -f ${QUIT_FILE} ]; then
+                    echo
+                    echo \\\"[GLOBAL SHUTDOWN]\\\"
+
+                    kill -INT -- -\\\$PID 2>/dev/null || true
+                    wait \\\$PID 2>/dev/null || true
+
+                    break
+                fi
+
+                sleep 0.2
+
+            done
+
+        '\"
     "
+
 
 # ==================================================
 # TERMINAL 3 — OBSTACLE AVOIDANCE OUTPUT
-#
-# This terminal waits until Terminal 4 tells it
-# to start.
 # ==================================================
 
 gnome-terminal \
@@ -127,6 +187,7 @@ gnome-terminal \
         -o StrictHostKeyChecking=no \
         -tt ${ROBOT_USER}@${ROBOT_IP} \
         \"bash -c '
+
             cd ${REMOTE_WS}
             source install/setup.bash
 
@@ -135,10 +196,18 @@ gnome-terminal \
             echo \\\" Obstacle Avoidance OUTPUT\\\"
             echo \\\"================================\\\"
             echo
-            echo \\\"Waiting for START command...\\\"
+            echo \\\"Waiting for START...\\\"
 
+            # Wait until control terminal starts us
             while [ ! -f ${START_FILE} ]; do
+
+                # Allow global shutdown even before start
+                if [ -f ${QUIT_FILE} ]; then
+                    exit 0
+                fi
+
                 sleep 0.1
+
             done
 
             rm -f ${START_FILE}
@@ -147,35 +216,54 @@ gnome-terminal \
             echo \\\"Starting obstacle avoidance...\\\"
             echo
 
-            setsid ros2 run rb2301_ca1 obstacle_avoidance </dev/null &
+            setsid ros2 run \
+                rb2301_ca1 \
+                obstacle_avoidance \
+                </dev/null &
 
             PID=\\\$!
 
             echo \\\$PID > ${PID_FILE}
 
-            echo \\\"Process PID: \\\$PID\\\"
+            echo \\\"PID: \\\$PID\\\"
             echo \\\"--------------------------------\\\"
             echo
 
-            wait \\\$PID
+            while kill -0 \\\$PID 2>/dev/null; do
+
+                if [ -f ${QUIT_FILE} ]; then
+
+                    echo
+                    echo \\\"[GLOBAL SHUTDOWN]\\\"
+
+                    # Make sure paused process is resumed
+                    # so it can receive SIGINT.
+                    kill -CONT -- -\\\$PID 2>/dev/null || true
+
+                    kill -INT -- -\\\$PID 2>/dev/null || true
+
+                    wait \\\$PID 2>/dev/null || true
+
+                    break
+                fi
+
+                sleep 0.1
+
+            done
 
             rm -f ${PID_FILE}
 
-            echo
-            echo \\\"--------------------------------\\\"
-            echo \\\"Obstacle avoidance stopped.\\\"
         '\"
-
-        exec bash
     "
 
+
 # ==================================================
-# TERMINAL 4 — OBSTACLE AVOIDANCE CONTROL
+# TERMINAL 4 — CONTROL
 #
 # ENTER -> start
 # s     -> pause
 # r     -> resume
-# q     -> stop
+# q     -> GLOBAL SHUTDOWN
 # ==================================================
 
 gnome-terminal \
@@ -191,27 +279,41 @@ gnome-terminal \
             echo \\\" Obstacle Avoidance CONTROL\\\"
             echo \\\"================================\\\"
             echo
+            echo \\\"ENTER = start\\\"
+            echo \\\"q     = quit everything\\\"
+            echo
 
-            read -r -p \\\"Press ENTER to START...\\\"
+            read -r -p \\\"Press ENTER to START: \\\" CMD
+
+            # q can also quit before starting
+            if [ \\\"\\\$CMD\\\" = \\\"q\\\" ]; then
+                touch ${QUIT_FILE}
+                exit 0
+            fi
 
             touch ${START_FILE}
 
             echo \\\"Waiting for obstacle process...\\\"
 
             while [ ! -s ${PID_FILE} ]; do
+
+                if [ -f ${QUIT_FILE} ]; then
+                    exit 0
+                fi
+
                 sleep 0.1
+
             done
 
             PID=\\\$(cat ${PID_FILE})
 
             echo
             echo \\\"Obstacle avoidance started.\\\"
-            echo \\\"PID: \\\$PID\\\"
             echo
             echo \\\"Commands:\\\"
             echo \\\"  s + ENTER  -> pause\\\"
             echo \\\"  r + ENTER  -> resume\\\"
-            echo \\\"  q + ENTER  -> stop\\\"
+            echo \\\"  q + ENTER  -> STOP EVERYTHING\\\"
             echo
 
             while true; do
@@ -221,23 +323,24 @@ gnome-terminal \
                 case \\\"\\\$CMD\\\" in
 
                     s)
-                        kill -STOP -- -\\\$PID
-
+                        kill -STOP -- -\\\$PID 2>/dev/null || true
                         echo \\\"[PAUSED]\\\"
                         ;;
 
                     r)
-                        kill -CONT -- -\\\$PID
-
+                        kill -CONT -- -\\\$PID 2>/dev/null || true
                         echo \\\"[RESUMED]\\\"
                         ;;
 
                     q)
-                        echo \\\"[STOPPING]\\\"
+                        echo
+                        echo \\\"[GLOBAL SHUTDOWN]\\\"
+                        echo \\\"Stopping all ROS processes...\\\"
 
-                        kill -INT -- -\\\$PID 2>/dev/null || true
+                        # Signal every other terminal
+                        touch ${QUIT_FILE}
 
-                        break
+                        exit 0
                         ;;
 
                     *)
@@ -248,12 +351,9 @@ gnome-terminal \
 
             done
 
-            echo \\\"Obstacle avoidance stopped.\\\"
-
         '\"
-
-        exec bash
     "
+
 
 echo "================================"
 echo "All 4 terminals opened."
