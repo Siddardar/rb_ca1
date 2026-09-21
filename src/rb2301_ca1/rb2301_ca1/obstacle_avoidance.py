@@ -51,18 +51,22 @@ class ObstacleAvoidanceNode(Node):
         x = np.clip(x, -max_translate_velocity, max_translate_velocity)
         y = np.clip(y, -max_translate_velocity, max_translate_velocity)
         turn = np.clip(turn, -max_turn_velocity, max_turn_velocity)
+
         x = self.cmd_x = self.regularise(x, self.cmd_x)
         y = self.cmd_y = self.regularise(y, self.cmd_y)
+
         twist_msg.linear.x, twist_msg.linear.y, twist_msg.linear.z = float(x), float(y), 0.0
         twist_msg.angular.x, twist_msg.angular.y, twist_msg.angular.z = 0.0, 0.0, float(turn)
+
         self.pub_cmd_vel.publish(twist_msg)
 
     def sub_scan_callback(self, msg):
         """Scan subscriber"""
         scan = np.array(msg.ranges) # keep full scan
-        # inf / nan / below-min readings all mean "nothing seen"; treat as max range so the maths stays finite
-        bad = ~np.isfinite(scan) | (scan < msg.range_min)
+        
+        bad = ~np.isfinite(scan) | (scan < msg.range_min) # clean up values
         scan[bad] = msg.range_max
+
         self.last_scan = scan
         self.idx_per_deg = 1 / np.rad2deg(msg.angle_increment)
 
@@ -112,11 +116,11 @@ class ObstacleAvoidanceNode(Node):
             room = left if self.side > 0 else right
             self.get_logger().debug(f"side blocked, switching to {'L' if self.side > 0 else 'R'}")
 
-        # both sides blocked too: don't stop, keep moving along whichever side has more room and re-check next tick
+        # both sides blocked: go to side has more room and re-check next tick
         if room <= self.SAFE_DIST:
             self.side = 1 if left > right else -1
             room = left if self.side > 0 else right
-            self.get_logger().debug(f"both blocked, pushing {'L' if self.side > 0 else 'R'} (left: {left:.2f}, right: {right:.2f})")
+            self.get_logger().debug(f"both blocked, recheck {'L' if self.side > 0 else 'R'} (left: {left:.2f}, right: {right:.2f})")
 
         self.get_logger().debug(f"strafe {'L' if self.side > 0 else 'R'}, room: {room:.2f} m, front: {front:.2f} m")
         self.move_2D(0, self.side * max_translate_velocity, 0)
