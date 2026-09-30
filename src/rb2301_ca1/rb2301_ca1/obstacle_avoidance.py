@@ -1,545 +1,685 @@
+"""Reactive gap avoidance: search with a turning circle, cross with a rectangle."""
+
 import math
+from collections import Counter
 
 import numpy as np
 import rclpy
-from rclpy.node import Node
-from rclpy.logging import set_logger_level, LoggingSeverity
 from geometry_msgs.msg import Twist
+from rclpy.logging import LoggingSeverity
+from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 
-np.set_printoptions(
-    2, suppress=True
-)  # Print numpy arrays to specified d.p. and suppress scientific notation (e.g. 1e-5)
 
-set_logger_level("obstacle_avoidance", level=LoggingSeverity.DEBUG) # Configure to either LoggingSeverity.INFO or LoggingSeverity.DEBUG
+def wrap(angle):
+    return (angle + math.pi) % (2 * math.pi) - math.pi
 
 
-def wrap(a):
-    """Fold angle(s) into [-pi, pi), so 350 deg reads as -10 deg rather than a big number"""
-    return (np.asarray(a, dtype=float) + np.pi) % (2 * np.pi) - np.pi
+def direction(beta):
+    """Body coordinates: x right, y forward; bearings clockwise from the nose."""
+    return np.array([math.sin(beta), math.cos(beta)])
 
 
 class ObstacleAvoidanceNode(Node):
-    """Gap-finding obstacle avoidance for a holonomic base.
-
-    Bearings and yaw are both measured CLOCKWISE FROM THE NOSE, so bearing 0 is the
-    nose, +90 is the robot's right, and body coordinates are (x = right, y = nose).
-    ROS is counterclockwise-positive and REP-103 fixes the Twist axes, so every
-    conversion out of this frame flips a sign -- see move_2D and integrate_yaw.
-
-    Travel direction and nose direction are independent on this base, and the whole
-    design turns on keeping them apart. A crossing holds one frozen world direction
-    while the nose either points along it (rotating first) or stays where it is.
-    """
-
-    CRUISE = "CRUISE"     # no latch: pick a clear direction, unwind residual yaw
-    ALIGN = "ALIGN"       # latched, rotating the nose onto the crossing direction
-    CROSS = "CROSS"       # latched, driving the crossing direction
+    FORWARD = "FORWARD"
+    SEARCH = "SEARCH"
+    ADJUST = "ADJUST"
+    TURN = "TURN"
+    CROSS = "CROSS"
+    EXIT = "EXIT"  # gap cleared; hold heading until there is room to restore it
+    RECOVER = "RECOVER"
+    RETREAT = "RETREAT"
 
     def __init__(self):
-        """Node constructor"""
         super().__init__("obstacle_avoidance")
-        self.get_logger().info("Starting Obstacle Avoidance")
-
-        self.pub_cmd_vel = self.create_publisher(Twist, "cmd_vel", 10)  # Publish to cmd_vel node
-        self.sub_scan = self.create_subscription(LaserScan, "scan", self.sub_scan_callback, 2) # The subscriber to the Lidar ranges.
-
-        # ---- parameters ---------------------------------------------------
-        self.declare_parameter("robot_width", 0.225)      # across the nose
-        self.declare_parameter("robot_length", 0.289)     # along the nose
-        self.declare_parameter("clearance", 0.03)         # inflation, per side
-        self.declare_parameter("plan_dist", 0.60)         # free distance for full speed
-        self.declare_parameter("min_cruise_dist", 0.10)   # useful progress beyond braking room
-        self.declare_parameter("heading_step_deg", 3.0)   # cruise direction grid
-        self.declare_parameter("hysteresis", 0.5)         # must be < 1, see choose()
-        self.declare_parameter("room_gain", 0.25)         # room_gain*horizon must stay < pi
-        self.declare_parameter("horizon", 2.0)            # free distance past this is all equal
-        self.declare_parameter("yaw_gain", 1.5)           # unwind / align P gain
-        self.declare_parameter("align_tol_deg", 4.0)      # when ALIGN is done
-        self.declare_parameter("max_gap_span_deg", 120.0) # widest edge pair to consider
-        self.declare_parameter("motion_samples", 8)       # trajectory samples per check
-        self.declare_parameter("cross_timeout", 200)      # ticks a latch may live
-        self.declare_parameter("max_speed", 0.4)
-        self.declare_parameter("max_turn", 0.8)
-        # Bearing of scan index 0, measured clockwise from the nose. Set it by putting
-        # one object dead ahead and checking the scan minimum lands near bearing 0.
-        self.declare_parameter("lidar_mount_yaw", math.pi)
-
-        g = lambda n: self.get_parameter(n).value
-        self.W = g("robot_width")
-        self.L = g("robot_length")
-        self.c = g("clearance")
-        self.d_plan = g("plan_dist")
-        self.min_cruise_dist = g("min_cruise_dist")
-        self.hyst = g("hysteresis")
-        self.room_gain = g("room_gain")
-        self.horizon = g("horizon")
+        defaults = {
+            "robot_width": 0.225, "robot_length": 0.289, "clearance": 0.03,
+            "max_speed": 0.4, "reposition_speed": 0.15, "max_turn": 0.8,
+            "max_accel": 0.8, "max_angular_accel": 4.0, "yaw_gain": 1.5,
+            "align_tol_deg": 0.5, "cross_stop_dist": 0.05,
+            "forward_resume_dist": 0.35, "reposition_tolerance": 0.02,
+            "reposition_max_dist": 0.60, "min_gap_slack": 0.01,
+            "max_gap_span_deg": 180.0, "gap_max_distance": 1.5,
+            "progress_timeout": 2.0, "progress_dist": 0.01,
+            "failed_gap_timeout": 5.0, "failed_gap_match_dist": 0.15,
+            "lidar_mount_yaw": math.pi, "lidar_offset_forward": 0.11423,
+            "lidar_offset_right": 0.0, "debug_logging": True,
+            "debug_interval": 1.0,
+        }
+        for name, value in defaults.items():
+            self.declare_parameter(name, value)
+        g = lambda name: self.get_parameter(name).value
+        self.W, self.L, self.margin = g("robot_width"), g("robot_length"), g("clearance")
+        self.radius = math.hypot(self.W / 2, self.L / 2) + self.margin
+        self.half_width = self.W / 2 + self.margin
+        self.half_length = self.L / 2 + self.margin
+        self.max_v, self.side_v, self.max_w = g("max_speed"), g("reposition_speed"), g("max_turn")
+        self.accel, self.alpha = g("max_accel"), g("max_angular_accel")
         self.yaw_gain = g("yaw_gain")
         self.align_tol = math.radians(g("align_tol_deg"))
-        self.max_span = math.radians(g("max_gap_span_deg"))
-        self.n_samples = int(g("motion_samples"))
-        self.cross_timeout = int(g("cross_timeout"))
-        self.max_v = g("max_speed")
-        self.max_w = g("max_turn")
+        self.stop = g("cross_stop_dist")
+        self.resume = max(g("forward_resume_dist"), self.stop + 0.05)
+        self.position_tol = g("reposition_tolerance")
+        self.adjust_max = g("reposition_max_dist")
+        self.min_slack = g("min_gap_slack")
+        self.max_span = math.radians(min(180.0, g("max_gap_span_deg")))
+        self.gap_range = g("gap_max_distance")
+        self.progress_timeout, self.progress_dist = g("progress_timeout"), g("progress_dist")
+        self.failed_timeout, self.failed_match = g("failed_gap_timeout"), g("failed_gap_match_dist")
         self.lidar_yaw = g("lidar_mount_yaw")
+        self.lidar_offset = np.array([g("lidar_offset_right"), g("lidar_offset_forward")])
+        self.debug_enabled, self.debug_interval = g("debug_logging"), g("debug_interval")
+        if self.debug_enabled:
+            self.get_logger().set_level(LoggingSeverity.DEBUG)
 
-        # Footprint as an axis-aligned box in body coordinates: half-extents across
-        # the nose and along it. Inflated for collision, raw for the overlap monitor.
-        self.ex, self.ey = self.W / 2 + self.c, self.L / 2 + self.c
-        self.ex_raw, self.ey_raw = self.W / 2, self.L / 2
+        self.DT = 0.05
+        self.points = None
+        self.beam_points = None
+        self.ranges = self.valid = None
+        self.angle_step = 0.0
+        self.scan_time = self.cloud_time = None
+        self.last_tick = None
+        self.now = 0.0
+        self.yaw = 0.0
+        self.velocity = np.zeros(2)  # last published (right, forward) translation
+        self.omega = 0.0             # last published CLOCKWISE rotation
+        self.state = self.FORWARD
+        self.side = 1                # +1 right, -1 left; held throughout a search leg
+        self.last_side_switch = -math.inf
+        self.backing = False         # SEARCH is reversing out of a boxed-in position
+        self.lidar_origin = self.lidar_offset.copy()
+        self.edges = self.waypoint = self.entry = None
+        self.cross_heading = 0.0     # frozen bearing relative to startup
+        self.turn_ready = False
+        self.plan_reason = ""
+        self.failed = []             # (expiry, motion-tracked endpoint pair)
+        self.progress_key = None
+        self.progress_value = self.progress_time = 0.0
+        self.debug_times = {}
+        self.pub_cmd_vel = self.create_publisher(Twist, "cmd_vel", 10)
+        self.sub_scan = self.create_subscription(LaserScan, "scan", self.scan_callback, 2)
+        self.timer = self.create_timer(self.DT, self.timer_callback)
+        self.get_logger().info(
+            f"Starting Obstacle Avoidance: bubble_radius={self.radius:.3f}m "
+            f"crossing_width={2 * self.half_width:.3f}m; continuous left/right search; "
+            f"lidar_offset={self.lidar_offset.tolist()} mount_yaw={math.degrees(self.lidar_yaw):.1f}deg")
 
-        # ---- cruise direction grid ---------------------------------------
-        step = math.radians(g("heading_step_deg"))
-        self.grid = wrap(np.arange(int(round(2 * math.pi / step))) * step)
-        self.grid_ux = np.sin(self.grid)    # body x (right) component
-        self.grid_uy = np.cos(self.grid)    # body y (nose)  component
+    def debug(self, key, message):
+        if self.debug_enabled and self.now - self.debug_times.get(key, -math.inf) >= self.debug_interval:
+            self.debug_times[key] = self.now
+            self.get_logger().debug(message)
 
-        # ---- scan cache ---------------------------------------------------
-        # Beam bearings are fixed for a given sensor, so the trig is computed once.
-        # Keyed on the full scan geometry: a sensor can report the same sample count
-        # at a different increment, and length alone would miss that.
-        self._key = None
-        self._bearings = self._sin_b = self._cos_b = None
-        self._scan = self.px = self.py = None
+    def change_state(self, state, reason):
+        self.get_logger().info(f"{self.state} -> {state}: {reason}")
+        self.state = state
+        self.progress_key = None
+        self.backing = False
 
-        # ---- controller state --------------------------------------------
-        self.DT = 0.05 # controller period (s)
-        self.timer = self.create_timer(self.DT, self.timer_callback)  # Runs at 20Hz. Can be changed.
+    def scan_callback(self, msg):
+        raw = np.asarray(msg.ranges, dtype=float)
+        # Returns closer than range_min are still real obstacles (just less
+        # accurate); treating them as no-return would open a phantom gap ahead.
+        self.valid = np.isfinite(raw) & (raw > 0.0) & (raw < msg.range_max)
+        self.ranges = np.where(self.valid, raw, msg.range_max)
+        bearings = -(msg.angle_min + np.arange(len(raw)) * msg.angle_increment + self.lidar_yaw)
+        self.beam_points = np.column_stack((self.ranges * np.sin(bearings),
+                                           self.ranges * np.cos(bearings))) + self.lidar_offset
+        # No-return beams are not obstacle endpoints or synthetic distant obstacles.
+        self.points = self.beam_points[self.valid].copy()
+        self.lidar_origin = self.lidar_offset.copy()
+        self.angle_step = abs(msg.angle_increment)
+        self.scan_time = self.cloud_time = self.get_clock().now().nanoseconds * 1e-9
+        self.debug("scan", f"SCAN beams={len(raw)} returns={np.count_nonzero(self.valid)} "
+                   f"no_return_or_invalid={np.count_nonzero(~self.valid)}")
 
-        self.MAX_ACCEL = 0.8 # m/s^2 per axis; lower = gentler direction changes
-        self.MAX_ALPHA = 4.0 # rad/s^2; limit angular acceleration for physical tracking
-        self.cmd_x = 0.0 # velocity actually sent last tick, so we can ramp towards the new target
-        self.cmd_y = 0.0
-        self.cmd_turn = 0.0
+    # Search geometry: one circle guarantees room for any in-place turn.
+    def bubble_clear(self, origin=None):
+        p = self.points if origin is None else self.points - origin
+        return not np.any(np.linalg.norm(p, axis=1) < self.radius - 1e-6)
 
-        self.yaw = 0.0          # psi: rotation since startup, CLOCKWISE-positive
-        self.t_prev = None
-        self.world_prev = 0.0   # last tick's chosen direction, startup-relative
-        self.state = self.CRUISE
+    def bubble_free(self, beta, origin=None):
+        p = self.points if origin is None else self.points - origin
+        if not len(p):
+            return math.inf
+        u = direction(beta)
+        along = p @ u
+        perpendicular2 = np.maximum(np.sum(p * p, axis=1) - along * along, 0.0)
+        hits = (perpendicular2 < self.radius ** 2) & (along >= 0.0)
+        # A point already inside the circle only blocks directions that would
+        # carry the circle deeper onto it; moving away from it is the escape.
+        inside = np.linalg.norm(p, axis=1) < self.radius - 1e-6
+        if np.any(inside & (along > 0.0)):
+            return 0.0
+        hits &= ~inside
+        if not np.any(hits):
+            return math.inf
+        return max(0.0, float(np.min(along[hits] - np.sqrt(self.radius ** 2 - perpendicular2[hits]))))
 
-        self.theta_star = 0.0   # latched crossing direction, startup-relative
-        self.edges = None       # latched edge points, body coords, shape (2, 2)
-        self.needs_rotation = False
-        self.latch_ticks = 0
-        self.block = 0          # ticks before another latch is allowed
-
-    # ---------------------------------------------------------------- output
-
-    def regularise(self, target, current, rate):
-        """Move current towards target by at most rate * DT, so commands ramp instead of jumping"""
-        step = rate * self.DT
-        return float(np.clip(target, current - step, current + step))
-
-    def move_2D(self, beta: float, v: float, turn: float):
-        """Publish a twist travelling at speed v along body bearing beta, turning at `turn`.
-
-        beta is clockwise from the nose, so the nose component is cos and the LEFT
-        component is -sin. turn is angular.z, i.e. counterclockwise-positive, which is
-        the opposite sense to self.yaw. Check the rate-limited command and its braking
-        path before publishing; yaw and edge tracking integrate only that final command.
-        """
-        x = np.clip(v * math.cos(beta), -self.max_v, self.max_v)
-        y = np.clip(-v * math.sin(beta), -self.max_v, self.max_v)
-        turn = np.clip(turn, -self.max_w, self.max_w)
-
-        x = self.regularise(x, self.cmd_x, self.MAX_ACCEL)
-        y = self.regularise(y, self.cmd_y, self.MAX_ACCEL)
-        turn = self.regularise(turn, self.cmd_turn, self.MAX_ALPHA)
-        if not self.command_clear(x, y, turn):
-            # Prefer a checked, controlled stop. If even braking would contact an
-            # obstacle, command an immediate stop rather than publishing unsafe motion.
-            x = self.regularise(0.0, self.cmd_x, self.MAX_ACCEL)
-            y = self.regularise(0.0, self.cmd_y, self.MAX_ACCEL)
-            turn = self.regularise(0.0, self.cmd_turn, self.MAX_ALPHA)
-            if not self.command_clear(x, y, turn):
-                x, y, turn = 0.0, 0.0, 0.0
-        self.cmd_x, self.cmd_y, self.cmd_turn = x, y, turn
-
-        msg = Twist()
-        msg.linear.x, msg.linear.y, msg.linear.z = self.cmd_x, self.cmd_y, 0.0
-        msg.angular.x, msg.angular.y, msg.angular.z = 0.0, 0.0, self.cmd_turn
-        self.pub_cmd_vel.publish(msg)
-
-    # ----------------------------------------------------------------- input
-
-    def sub_scan_callback(self, msg):
-        """Scan subscriber. Converts to body-frame points once per scan."""
-        scan = np.asarray(msg.ranges, dtype=float) # keep full scan
-
-        bad = ~np.isfinite(scan) | (scan < msg.range_min) # clean up values
-        scan[bad] = msg.range_max
-
-        key = (len(scan), msg.angle_min, msg.angle_increment)
-        if key != self._key:
-            # The sensor counts counterclockwise in its own frame; negate to get a
-            # clockwise-from-nose bearing, and add the mount offset.
-            self._bearings = wrap(
-                -(msg.angle_min + np.arange(len(scan)) * msg.angle_increment + self.lidar_yaw))
-            self._sin_b, self._cos_b = np.sin(self._bearings), np.cos(self._bearings)
-            self._key = key
-
-        self._scan = scan
-        self.px = scan * self._sin_b     # body x: right
-        self.py = scan * self._cos_b     # body y: nose
-
-    # ------------------------------------------------- collision  (Part 3.1)
-
-    def _slab(self, p, u, e):
-        """t-interval over which p - t*u stays within [-e, e] on one axis."""
-        with np.errstate(divide="ignore", invalid="ignore"):
-            a, b = (p - e) / u, (p + e) / u
-        lo, hi = np.minimum(a, b), np.maximum(a, b)
-        parallel = np.abs(u) < 1e-12        # ray never crosses this slab boundary
-        within = np.abs(p) <= e
-        lo = np.where(parallel, np.where(within, -np.inf, np.inf), lo)
-        hi = np.where(parallel, np.where(within, np.inf, -np.inf), hi)
-        return lo, hi
-
-    def _box_distances(self, px, py, ux, uy, ex, ey):
-        """Entry distance for every point/direction pair, including initial overlap."""
-        lo_x, hi_x = self._slab(px[:, None], np.atleast_1d(ux)[None, :], ex)
-        lo_y, hi_y = self._slab(py[:, None], np.atleast_1d(uy)[None, :], ey)
-        t_in, t_out = np.maximum(lo_x, lo_y), np.minimum(hi_x, hi_y)
-        hit = (t_in <= t_out) & (t_out >= 0.0)
-        return np.where(hit, np.maximum(t_in, 0.0), np.inf)
-
-    def _sweep_points(self, px, py, ux, uy):
-        """Plan with inflation, retaining directional clearance inside the margin."""
-        distances = self._box_distances(px, py, ux, uy, self.ex, self.ey)
-        in_margin = (np.abs(px) <= self.ex) & (np.abs(py) <= self.ey)
-        if np.any(in_margin):
-            # A nearby side obstacle may permit retreat or parallel movement, but
-            # must still constrain movement toward the actual body. Never discard it.
-            raw = self._box_distances(px[in_margin], py[in_margin], ux, uy,
-                                      self.ex_raw, self.ey_raw)
-            distances[in_margin] = np.maximum(raw - self.c, 0.0)
-        return distances.min(axis=0)
-
-    def sweep(self, ux, uy):
-        """Planned free travel using exact box intersections and a clearance margin.
-
-        In body coordinates the footprint is an AXIS-ALIGNED box, so nothing rotates --
-        the travel direction tilts, the box does not. Free travel is then a two-slab
-        ray-box intersection per beam, solving for p - t*u inside the box. Exact, and it
-        returns a distance rather than a boolean, which is what speed control needs.
-
-        A strip test on the bounding box of the rotated footprint would be up to 2x too
-        large at diagonal travel, refusing motion the body would clear.
-        """
-        return self._sweep_points(self.px, self.py, ux, uy)
-
-    def sweep_one(self, beta):
-        """Free travel along a single body bearing."""
-        return float(self.sweep(math.sin(beta), math.cos(beta))[0])
-
-    def motion_clear(self, dx, dy, dpsi):
-        """Is translating by (dx, dy) while rotating dpsi collision-free?
-
-        Checking a translation and a rotation separately does not establish that doing
-        both is clear: the corners follow different paths when they happen together. So
-        sample the motion and test box membership at each sample. Pure rotation is the
-        dx = dy = 0 case, and it covers the swept union over the interval, which is
-        strictly larger than either endpoint because the corners trace arcs.
-        """
-        s = np.linspace(0.0, 1.0, max(2, self.n_samples))
-        return self._poses_clear(dx * s, dy * s, dpsi * s)
-
-    def _poses_clear(self, dx, dy, dpsi):
-        """Check poses expressed relative to the current body frame."""
-        if self.px is None:
-            return False
-        X = self.px[:, None] - np.asarray(dx)[None, :]
-        Y = self.py[:, None] - np.asarray(dy)[None, :]
-        cs, sn = np.cos(dpsi), np.sin(dpsi)
-        # Frame turns clockwise, so fixed points rotate by the opposite angle.
-        Xr = X * cs[None, :] - Y * sn[None, :]
-        Yr = Y * cs[None, :] + X * sn[None, :]
-        # true footprint, not the inflated one: sweep() already plans with margin, and
-        # this only has to stop the robot short of contact
-        return not bool(np.any((np.abs(Xr) < self.ex_raw) & (np.abs(Yr) < self.ey_raw)))
-
-    def command_clear(self, x, y, turn):
-        """Check one command period followed by braking at the configured slew rates.
-
-        Integrate body-frame velocities along the turning trajectory. This checks the
-        command after rate limiting, including residual motion when the target is zero.
-        It is a command-based prediction, not measured stopping performance.
-        """
-        dx = dy = psi = 0.0
-        poses = [(dx, dy, psi)]
-        samples = max(2, self.n_samples)
-        interval = self.DT / samples
-        while max(abs(x), abs(y), abs(turn)) > 1e-12:
-            vx, vy, omega = -y, x, -turn  # right, nose, clockwise
-            angle = omega * interval
-            if abs(omega) < 1e-12:
-                local_x, local_y = vx * interval, vy * interval
+    # Crossing geometry: the actual rectangular footprint, never the search circle.
+    def rectangle_free(self, beta, origin=None, heading=0.0):
+        p = self.points if origin is None else self.points - origin
+        cs, sn = math.cos(heading), math.sin(heading)
+        p = np.column_stack((p[:, 0] * cs - p[:, 1] * sn,
+                             p[:, 1] * cs + p[:, 0] * sn))
+        u = direction(beta - heading)
+        entry = np.full(len(p), -np.inf)
+        leave = np.full(len(p), np.inf)
+        for axis, extent in ((0, self.half_width), (1, self.half_length)):
+            if abs(u[axis]) < 1e-10:
+                outside = np.abs(p[:, axis]) > extent
+                entry[outside], leave[outside] = np.inf, -np.inf
             else:
-                a = math.sin(angle) / omega
-                b = (1.0 - math.cos(angle)) / omega
-                local_x, local_y = a * vx + b * vy, -b * vx + a * vy
-            for _ in range(samples):
-                cs, sn = math.cos(psi), math.sin(psi)
-                dx += cs * local_x + sn * local_y
-                dy += -sn * local_x + cs * local_y
-                psi += angle
-                poses.append((dx, dy, psi))
-            x = self.regularise(0.0, x, self.MAX_ACCEL)
-            y = self.regularise(0.0, y, self.MAX_ACCEL)
-            turn = self.regularise(0.0, turn, self.MAX_ALPHA)
-        poses = np.asarray(poses)
-        return self._poses_clear(poses[:, 0], poses[:, 1], poses[:, 2])
+                a, b = (p[:, axis] - extent) / u[axis], (p[:, axis] + extent) / u[axis]
+                entry = np.maximum(entry, np.minimum(a, b))
+                leave = np.minimum(leave, np.maximum(a, b))
+        hits = (entry <= leave) & (leave >= 0.0)
+        return max(0.0, float(np.min(entry[hits]))) if np.any(hits) else math.inf
 
-    def overlapping(self):
-        """Anything inside the true footprint. Should never be true; last line of defence."""
-        return bool(np.any((np.abs(self.px) < self.ex_raw) & (np.abs(self.py) < self.ey_raw)))
+    # Preserve the range-discontinuity / two-obstacle-edge gap finder.
+    def edge_pairs(self):
+        """Beam pairs (a, b): a is the last return before an opening, b the first after it."""
+        n = len(self.ranges)
+        counts, pairs = Counter(), []
+        if n < 2 or self.angle_step <= 0.0:
+            return pairs, counts
+        jump = np.roll(self.ranges, -1) - self.ranges
+        near = self.valid & (np.linalg.norm(self.beam_points, axis=1) <= self.gap_range)
+        rising = np.flatnonzero((jump > self.W / 2) & near)
+        falling = np.flatnonzero((jump < -self.W / 2) & np.roll(near, -1))
+        counts["rising"], counts["falling"] = len(rising), len(falling)
+        for a in rising:
+            if not len(falling):
+                break
+            k = int(np.searchsorted(falling, a, side="right")) % len(falling)
+            q = int(falling[k])
+            span = (q - int(a)) % n
+            if span < 1 or (span + 1) * self.angle_step > self.max_span + 1e-9:
+                counts["span"] += 1
+                continue
+            pairs.append((int(a), (q + 1) % n))
+        return pairs, counts
 
-    # ----------------------------------------------------- footprint extents
+    def edge_bound(self, i, j, toward):
+        """Innermost position of the obstacle edge whose last return is beam i.
 
-    def w_of(self, delta):
-        """Corridor width swept translating along delta (delta = travel-vs-nose angle)."""
-        return self.W * abs(math.cos(delta)) + self.L * abs(math.sin(delta))
+        The true edge lies between the return of beam i and the ray of the
+        neighbouring beam j that passes the obstacle. Extending the obstacle
+        surface (estimated from the return next to i, else the chord) to that
+        ray bounds the opening conservatively instead of overstating it by up
+        to one beam step per side, which biased the crossing midpoint.
+        """
+        n = len(self.beam_points)
+        p, origin = self.beam_points[i], self.lidar_origin
+        ray = self.beam_points[j] - origin
+        cap = self.W / 2
+        k = (2 * i - j) % n
+        surface = p - self.beam_points[k]
+        guesses = [toward]
+        if self.valid[k] and 1e-6 < np.linalg.norm(surface) < cap:
+            guesses.insert(0, surface)
+        d = origin - p
+        for w in guesses:
+            det = ray[0] * w[1] - ray[1] * w[0]
+            if abs(det) < 1e-9:
+                continue
+            s = (ray[0] * d[1] - ray[1] * d[0]) / det
+            t = (w[0] * d[1] - w[1] * d[0]) / det
+            shift = s * w
+            if t > 0.0 and shift @ toward > 0.0 and np.linalg.norm(shift) <= cap:
+                return p + shift
+        nominal = min(cap, float(np.linalg.norm(p - origin)) * self.angle_step)
+        return p + toward * nominal
 
-    def h_of(self, delta):
-        """Reach from the centre to the leading (and trailing) edge along delta."""
-        return 0.5 * (self.L * abs(math.cos(delta)) + self.W * abs(math.sin(delta)))
+    def pair_edges(self, a, b):
+        """Return (estimated, measured) edge pairs for one opening.
 
-    # ------------------------------------------------- gap finding  (Part 1)
+        `measured` is where the beams actually returned. Each true edge lies
+        between that return and the innermost position the neighbouring beam
+        allows, so the measured pair overstates the opening by up to one beam
+        step per side and biases its midpoint whenever the two sides are seen at
+        different incidence. `estimated` takes the middle of each edge's bracket,
+        which is unbiased in both width and centre; crossing geometry uses it,
+        and the optimistic `measured` pair only gates whether to approach.
+        """
+        n = len(self.beam_points)
+        raw = self.beam_points[[a, b]].copy()
+        chord = raw[1] - raw[0]
+        width = float(np.linalg.norm(chord))
+        if width < 1e-6:
+            return raw, raw
+        toward = chord / width
+        bounded = np.array([self.edge_bound(a, (a + 1) % n, toward),
+                            self.edge_bound(b, (b - 1) % n, -toward)])
+        return (bounded + raw) / 2, raw
+
+    def refresh_edges(self):
+        """Replace the dead-reckoned edge pair with its match in the current scan."""
+        best, best_error = None, self.failed_match
+        for a, b in self.edge_pairs()[0]:
+            edges = self.pair_edges(a, b)[0]
+            error = min(float(np.max(np.linalg.norm(edges - self.edges, axis=1))),
+                        float(np.max(np.linalg.norm(edges[::-1] - self.edges, axis=1))))
+            if error < best_error:
+                best, best_error = edges, error
+        if best is None:
+            self.get_logger().info("gap not re-detected in current scan; keeping tracked edges")
+            return False
+        self.get_logger().info(f"gap re-detected: tracked={self.edges.round(3).tolist()} "
+                               f"fresh={best.round(3).tolist()} shift={best_error:.3f}m")
+        self.edges = best
+        return True
 
     def find_gaps(self):
-        """Candidate crossings, as (score, beta, needs_rotation, Pa, Pb)."""
-        r = self._scan
-        n = len(r)
-        jump = np.roll(r, -1) - r                      # J_i = r_{i+1} - r_i
-        thr = self.W / 2                               # smaller steps cannot hide a passage
-        rising = np.flatnonzero(jump > thr)             # range rises: near point is beam i
-        falling = np.flatnonzero(jump < -thr)           # range falls: near point is beam i+1
-        if rising.size == 0 or falling.size == 0:
-            return []
-
-        span_cap = self.max_span / abs(self._bearings[1] - self._bearings[0])
-        out = []
-        for p in rising:
-            k = int(np.searchsorted(falling, p, side="right")) % falling.size
-            q = int(falling[k])
-            span = (q - p) % n
-            if span < 1 or span > span_cap:
+        pairs, counts = self.edge_pairs()
+        candidates = []
+        for a, b in pairs:
+            edges, measured = self.pair_edges(a, b)
+            midpoint = edges.mean(axis=0)
+            beta = math.atan2(midpoint[0], midpoint[1])
+            world = wrap(beta + self.yaw)
+            # The search leg's direction must not veto a reachable gap: a usable
+            # opening on the far side is still progress, and refusing it sends the
+            # robot strafing past the obstacle instead of through it.
+            if math.cos(world) <= 0.0:
+                counts["rearward"] += 1
                 continue
-            ia, ib = int(p), int((q + 1) % n)
-            # the beams between must see past both edges, or this is not an opening
-            through = np.take(r, np.arange(p + 1, p + 1 + span), mode="wrap")
-            if through.min() <= max(r[ia], r[ib]):
+            if any(min(np.max(np.linalg.norm(edges - old, axis=1)),
+                       np.max(np.linalg.norm(edges[::-1] - old, axis=1))) < self.failed_match
+                   for _, old in self.failed):
+                counts["recent_failure"] += 1
                 continue
-            cand = self.assess(ia, ib)
-            if cand is not None:
-                out.append(cand)
-        return out
+            chord = edges[1] - edges[0]
+            width = float(np.linalg.norm(chord))
+            if float(np.linalg.norm(measured[1] - measured[0])) < 2 * self.half_width + self.min_slack:
+                counts["width"] += 1
+                continue
+            if width < 1e-6:
+                counts["width"] += 1
+                continue
+            # Compare crossing from here with one simple staging point on the
+            # perpendicular through the gap centre; no sampled pose optimisation.
+            normal = np.array([-chord[1], chord[0]]) / width
+            if normal @ midpoint < 0.0:
+                normal = -normal
+            stand_off = max(float(midpoint @ normal), self.radius + self.stop)
+            staging = midpoint - stand_off * normal
+            accepted = None
+            for origin in (np.zeros(2), staging):
+                distance = float(np.linalg.norm(origin))
+                if distance > self.adjust_max:
+                    counts["adjustment_too_far"] += 1
+                    continue
+                if distance > self.position_tol:
+                    adjustment = math.atan2(origin[0], origin[1])
+                    if self.bubble_free(adjustment) <= distance + self.stop:
+                        counts["adjustment_circle_blocked"] += 1
+                        continue
+                plan = self.gap_plan(edges, origin, width_edges=measured)
+                if plan is not None:
+                    plan.update(edges=edges, origin=origin, beams=(a, b))
+                    if accepted is None or plan["slack"] > accepted["slack"] + 1e-6:
+                        accepted = plan
+                else:
+                    counts[self.plan_reason] += 1
+            if accepted is None:
+                counts["approach_or_crossing"] += 1
+            else:
+                candidates.append(accepted)
+                counts["accepted"] += 1
+        self.debug("gaps", f"GAPS side={'right' if self.side > 0 else 'left'} outcomes={dict(counts)}")
+        return candidates
 
-    def assess(self, ia, ib):
-        """Steps 4-6 for one edge pair. None if it is not crossable."""
-        Pa = np.array([self.px[ia], self.py[ia]])
-        Pb = np.array([self.px[ib], self.py[ib]])
-        chord = Pb - Pa
-        g = float(np.hypot(*chord))
-        if g <= self.W + 2 * self.c:
-            return None                                # too narrow at any orientation
+    def gap_plan(self, edges, origin, width_edges=None):
+        """Check gap width, turning room here, and clearance to begin crossing.
 
-        M = 0.5 * (Pa + Pb)
-        beta = math.atan2(M[0], M[1])                  # bearing is atan2(x, y) in this frame
-        # The opening only counts across the path, so project the chord perpendicular to
-        # travel. This is what makes the gap normal unnecessary: obliquity enters here.
-        n_u = np.array([-math.cos(beta), math.sin(beta)])
-        opening = abs(float(chord @ n_u))
-
-        # w() is minimised at delta = 0, so facing the travel direction is the cheapest
-        # orientation; not rotating means delta = beta.
-        if self.w_of(beta) + 2 * self.c < opening:
-            needs_rotation = False
-        elif self.W + 2 * self.c < opening:
-            needs_rotation = True
-        else:
-            return None
-
-        # Rotation-required crossings align in place first. Assess translation in
-        # that resulting frame, not with the unrotated footprint that cannot fit.
-        if needs_rotation:
-            if not self.motion_clear(0.0, 0.0, beta):
-                return None
-            cs, sn = math.cos(beta), math.sin(beta)
-            px = self.px * cs - self.py * sn
-            py = self.py * cs + self.px * sn
-            free = float(self._sweep_points(px, py, 0.0, 1.0)[0])
-        else:
-            free = self.sweep_one(beta)
-        if free < float(np.hypot(*M)):
-            return None
-
-        score = abs(float(wrap(beta + self.yaw)))       # deviation from the startup heading
-        return score, beta, needs_rotation, Pa, Pb
-
-    # --------------------------------------------------- cruise  (Part 2, 4)
-
-    def choose(self):
-        """Body bearing of the best clear direction, or None.
-
-        Free distance is a hard constraint. It returns as a bonus only saturated at the
-        horizon: an unbounded room reward makes reversing win whenever the way back is
-        more open than the way forward, which is always true when something blocks you.
-        With room_gain * horizon < pi that can never outweigh turning around.
-
-        Hysteresis is measured in the STARTUP frame. Penalising the body-frame change
-        would charge the robot for tracking a straight world line while it rotates.
+        `width_edges` supplies the pair used for the fit test. Deciding to
+        approach may use the measured pair, because the bound tightens as the
+        robot closes in; committing to cross must leave it None so the test runs
+        on the conservative pair, which cannot overstate the opening.
         """
-        free = self.sweep(self.grid_ux, self.grid_uy)
-        speed = math.hypot(self.cmd_x, self.cmd_y)
-        braking_room = speed * self.DT + speed * speed / (2 * self.MAX_ACCEL)
-        feasible = free > self.min_cruise_dist + braking_room
-        if not feasible.any():
-            return None, free
-        world = wrap(self.grid + self.yaw)              # goal is startup bearing 0
-        cost = (np.abs(world)
-                + self.hyst * np.abs(wrap(world - self.world_prev))
-                - self.room_gain * np.minimum(free, self.horizon))
-        return int(np.argmin(np.where(feasible, cost, np.inf))), free
+        if not self.bubble_clear(origin):
+            self.plan_reason = "turning_circle_blocked"
+            return None
+        shifted = edges - origin
+        midpoint = shifted.mean(axis=0)
+        beta = math.atan2(midpoint[0], midpoint[1])
+        if math.cos(wrap(beta + self.yaw)) <= 0.0:
+            self.plan_reason = "crossing_rearward"
+            return None
+        u = direction(beta)
+        across = np.array([u[1], -u[0]])
+        opening = abs(float((edges[1] - edges[0]) @ across))
+        slack = opening - 2 * self.half_width
+        fit = slack if width_edges is None else \
+            abs(float((width_edges[1] - width_edges[0]) @ across)) - 2 * self.half_width
+        if fit < self.min_slack:
+            self.plan_reason = "projected_width"
+            return None
+        # This distance is an estimate for logging, not a required clear horizon.
+        # Unknown/blocked space farther along the route does not veto entering a
+        # usable gap. Actual motion is checked and speed-limited on every tick.
+        travel = float(np.max(shifted @ u)) + self.half_length
+        free = self.rectangle_free(beta, origin, heading=beta)
+        if free <= self.stop + 0.005:
+            self.plan_reason = "crossing_entry_blocked"
+            return None
+        return dict(beta=beta, opening=opening, slack=slack, travel=travel, free=free)
 
-    def cruise(self):
-        """No latch: drive the clearest direction nearest the startup heading."""
-        if self.block:
-            self.block -= 1
-        else:
+    def latch_gap(self, plan):
+        self.edges = plan["edges"].copy()
+        self.waypoint = plan["origin"].copy()
+        self.cross_heading = wrap(plan["beta"] + self.yaw)
+        state = self.ADJUST if np.linalg.norm(self.waypoint) > self.position_tol else self.TURN
+        self.entry = np.zeros(2)
+        self.turn_ready = False
+        self.change_state(state, f"gap beams={plan['beams']} opening={plan['opening']:.3f}m "
+                          f"slack={plan['slack']:.3f}m goal={math.degrees(self.cross_heading):+.1f}deg "
+                          f"adjust={self.waypoint.round(3).tolist()} rear_clear_estimate={plan['travel']:.3f}m "
+                          f"edges={self.edges.round(3).tolist()}")
+
+    def stalled(self, key, remaining, improvement):
+        if self.progress_key != key or remaining < self.progress_value - improvement:
+            self.progress_key, self.progress_value, self.progress_time = key, remaining, self.now
+        return self.now - self.progress_time > self.progress_timeout
+
+    def waited(self, key):
+        """True once a state has been holding still on `key` past the timeout."""
+        return self.stalled(key, 0.0, 0.0)
+
+    def abort_gap(self, reason):
+        if self.edges is not None:
+            self.failed.append((self.now + self.failed_timeout, self.edges.copy()))
+            # Sweep back across the obstacle rather than continuing away from it:
+            # the rejected gap is suppressed for failed_gap_timeout, so the leg
+            # resumes past it instead of re-latching the same opening.
+            self.side *= -1
+            self.last_side_switch = self.now
+        # Inside a narrow opening, return along the crossing to the known turning
+        # position before restoring heading. Search must never rotate inside a gap.
+        next_state = self.RECOVER if self.bubble_clear() else self.RETREAT
+        self.change_state(next_state, reason)
+        return 0.0, 0.0, 0.0
+
+    def gap_hint(self):
+        """Side of a visible opening too far off to reach yet, or 0 if none."""
+        best, hint = math.inf, 0
+        for a, b in self.edge_pairs()[0]:
+            measured = self.pair_edges(a, b)[1]
+            if float(np.linalg.norm(measured[1] - measured[0])) < 2 * self.half_width + self.min_slack:
+                continue
+            midpoint = measured.mean(axis=0)
+            world = wrap(math.atan2(midpoint[0], midpoint[1]) + self.yaw)
+            if math.cos(world) <= 0.0:
+                continue
+            offset = float(np.linalg.norm(midpoint))
+            if offset < best and abs(math.sin(world)) > 1e-3:
+                best, hint = offset, (1 if math.sin(world) > 0.0 else -1)
+        return hint
+
+    def search(self):
+        front = self.bubble_free(-self.yaw)
+        if self.state == self.FORWARD:
+            if front > self.stop + self.position_tol:
+                return -self.yaw, self.max_v, 0.0
+            left = self.bubble_free(-math.pi / 2 - self.yaw)
+            right = self.bubble_free(math.pi / 2 - self.yaw)
+            # Strafe toward an opening that is visible but still out of reach;
+            # clearance only decides the direction when no gap is in sight.
+            hint = self.gap_hint()
+            self.side = hint if hint else (1 if right >= left else -1)
+            self.last_side_switch = self.now
+            self.change_state(self.SEARCH, f"front={front:.3f}m side={'right' if self.side > 0 else 'left'} "
+                              f"left={left:.3f}m right={right:.3f}m "
+                              f"{'toward visible gap' if hint else 'no gap in sight'}")
+            return 0.0, 0.0, 0.0
+        if front >= self.resume:
+            self.change_state(self.FORWARD, f"forward bubble path reopened: {front:.3f}m")
+            return 0.0, 0.0, 0.0
+        if self.bubble_clear():
             gaps = self.find_gaps()
             if gaps:
-                return self.latch(min(gaps))
-
-        i, free = self.choose()
-        if i is None:
-            self.get_logger().warn("no clear direction")
+                # Clearance wins; heading and adjustment length only break ties.
+                best = max(gaps, key=lambda g: (g["slack"], -abs(wrap(g["beta"] + self.yaw)),
+                                                -float(np.linalg.norm(g["origin"]))))
+                self.latch_gap(best)
+                return 0.0, 0.0, 0.0
+        beta = wrap(self.side * math.pi / 2 - self.yaw)
+        room = self.bubble_free(beta)
+        margin = self.stop + self.position_tol
+        if self.backing or room <= margin:
+            other = self.bubble_free(wrap(-self.side * math.pi / 2 - self.yaw))
+            # Overshooting the stop, or sitting in a gap mouth, leaves no room to
+            # strafe either way; reversing side forever would never free it.
+            if self.backing:
+                self.backing = (front < self.stop + 2 * self.position_tol
+                                or max(room, other) <= self.stop + 2 * self.position_tol)
+            elif front < self.stop or (room <= margin and other <= margin):
+                self.backing = True
+                self.get_logger().info(f"SEARCH boxed in (front={front:.3f}m left/right="
+                                       f"{min(room, other):.3f}m); backing off")
+            if self.backing:
+                rear_beta = wrap(math.pi - self.yaw)
+                if self.bubble_free(rear_beta) > margin:
+                    return rear_beta, self.side_v, 0.0
+                self.backing = False
+                self.debug("boxed", "SEARCH boxed in with no room behind either")
+        if room <= margin:
+            if self.now - self.last_side_switch >= 0.5:
+                self.side *= -1
+                self.last_side_switch = self.now
+                self.get_logger().info(f"SEARCH reversing to {'right' if self.side > 0 else 'left'}; "
+                                       f"side clearance={room:.3f}m")
             return 0.0, 0.0, 0.0
+        return beta, self.side_v, 0.0
 
-        beta, room = float(self.grid[i]), float(free[i])
-        v = self.max_v * min(1.0, room / self.d_plan)
-        # The cost minimum already sits at beta = -yaw, so translating there holds a
-        # straight world line while this term rotates the body upright underneath it.
-        # angular.z is counterclockwise, yaw is clockwise, hence the plus sign.
-        turn = float(np.clip(self.yaw_gain * self.yaw, -self.max_w, self.max_w))
-        if not self.motion_clear(v * math.sin(beta) * self.DT,
-                                 v * math.cos(beta) * self.DT, -turn * self.DT):
+    def handle_state(self):
+        if self.state in (self.FORWARD, self.SEARCH):
+            return self.search()
+        if self.state == self.ADJUST:
+            remaining = float(np.linalg.norm(self.waypoint))
+            if remaining <= self.position_tol:
+                if np.linalg.norm(self.velocity) > 1e-4:
+                    return 0.0, 0.0, 0.0
+                self.change_state(self.TURN, "adjustment complete")
+                return 0.0, 0.0, 0.0
+            beta = math.atan2(self.waypoint[0], self.waypoint[1])
+            if self.bubble_free(beta) <= remaining or self.stalled(self.ADJUST, remaining, self.progress_dist):
+                return self.abort_gap("adjustment blocked or stalled")
+            return beta, min(self.side_v, remaining / 0.3), 0.0
+        if self.state in (self.TURN, self.RECOVER):
+            if self.state == self.TURN and not self.turn_ready:
+                # Braking a strafe changes the approach position. Freeze the turn
+                # bearing only once stopped, using the gap in the current frame.
+                if np.linalg.norm(self.velocity) > 1e-4 or abs(self.omega) > 1e-4:
+                    return 0.0, 0.0, 0.0
+                # The edges were latched from afar with coarse angular sampling;
+                # re-measure them from here before committing to a heading.
+                self.refresh_edges()
+                plan = self.gap_plan(self.edges, np.zeros(2))
+                if plan is None:
+                    return self.abort_gap(f"crossing rejected before turn: {self.plan_reason}")
+                self.cross_heading = wrap(plan["beta"] + self.yaw)
+                self.entry = np.zeros(2)
+                self.turn_ready = True
+            target = self.cross_heading if self.state == self.TURN else 0.0
+            error = wrap(target - self.yaw)
+            if not self.bubble_clear():
+                if self.state == self.TURN:
+                    return self.abort_gap("turning bubble no longer clear")
+                if self.entry is not None:
+                    self.change_state(self.RETREAT, "recovery bubble blocked; returning to entry")
+                elif self.waited("recover-blocked"):
+                    # Never wait here indefinitely: searching keeps the heading and
+                    # can strafe or back away, which is what frees the bubble.
+                    self.edges = self.waypoint = self.entry = None
+                    self.change_state(self.SEARCH, "recovery bubble stayed blocked; searching instead")
+                else:
+                    self.debug("recover-blocked", "RECOVER waiting for turning-bubble clearance")
+                return 0.0, 0.0, 0.0
+            if abs(error) <= self.align_tol and abs(self.omega) < 0.01:
+                if self.state == self.RECOVER:
+                    self.edges = self.waypoint = self.entry = None
+                    self.change_state(self.SEARCH, "original heading restored")
+                else:
+                    if not self.crossing_clear(error):
+                        return self.abort_gap("crossing entry blocked after turn")
+                    self.change_state(self.CROSS, "aligned; switching from circle to rectangular footprint")
+                return 0.0, 0.0, 0.0
+            if self.stalled(self.state, abs(error), math.radians(0.1)):
+                if self.state == self.TURN:
+                    return self.abort_gap("turn stalled")
+                self.progress_key = None  # keep trying to recover, never start another turn target
+            turn = math.copysign(min(self.max_w, self.yaw_gain * abs(error),
+                                     math.sqrt(2 * self.alpha * abs(error))), error)
+            return 0.0, 0.0, turn
+        if self.state == self.CROSS:
+            beta = wrap(self.cross_heading - self.yaw)
+            u = direction(beta)
+            reach = self.half_length * abs(math.cos(beta)) + self.half_width * abs(math.sin(beta))
+            rear_clear = float(np.max(self.edges @ u)) + reach
+            if rear_clear < 0.0:
+                self.edges = self.waypoint = self.entry = None
+                self.change_state(self.EXIT, "rear cleared; heading recovery handled after crossing")
+                return 0.0, 0.0, 0.0
+            if self.rectangle_free(beta) <= self.stop + 0.005:
+                return self.abort_gap("crossing blocked")
+            if self.stalled(self.CROSS, rear_clear, self.progress_dist):
+                return self.abort_gap("crossing stalled")
+            return beta, self.side_v, 0.0
+        if self.state == self.EXIT:
+            if self.bubble_clear():
+                self.change_state(self.RECOVER, "turning bubble available beyond gap")
+                return 0.0, 0.0, 0.0
+            # Keep the nose fixed beyond the gap. A missing turning bubble is not
+            # a failed crossing and must not send the robot back through the gap.
+            beta = wrap(self.cross_heading - self.yaw)
+            room = self.rectangle_free(beta)
+            if room <= self.stop + 0.005:
+                # Boxed in beyond the gap with no room to turn: reverse along the
+                # crossing heading, the one direction known to have been clear.
+                back = wrap(beta + math.pi)
+                if self.waited("exit-hold") and self.rectangle_free(back) > self.stop + 0.005:
+                    self.debug("exit", f"EXIT blocked ahead ({room:.3f}m) with no turning bubble; "
+                               "reversing along the crossing heading")
+                    return back, self.side_v, 0.0
+                self.debug("exit", f"EXIT gap crossed; holding heading, forward clearance={room:.3f}m "
+                           "and turning bubble not yet clear")
+                return 0.0, 0.0, 0.0
+            self.debug("exit", f"EXIT continuing with fixed heading; forward clearance={room:.3f}m")
+            return beta, self.side_v, 0.0
+        if self.state == self.RETREAT:
+            if np.linalg.norm(self.velocity) < 1e-4 and self.bubble_clear():
+                self.change_state(self.RECOVER, "turning bubble regained on retreat")
+                return 0.0, 0.0, 0.0
+            if self.entry is None or np.linalg.norm(self.entry) <= self.position_tol:
+                if self.waited("retreat-blocked"):
+                    # The entry pose no longer offers a turning bubble; stop
+                    # waiting for one and let the search free the robot.
+                    self.edges = self.waypoint = self.entry = None
+                    self.change_state(self.SEARCH, "retreat reached entry without a turning bubble")
+                    return 0.0, 0.0, 0.0
+                self.debug("retreat-blocked", "RETREAT waiting: no clear turning position reached")
+                return 0.0, 0.0, 0.0
+            beta = math.atan2(self.entry[0], self.entry[1])
+            return beta, min(self.side_v, float(np.linalg.norm(self.entry)) / 0.3), 0.0
+        return 0.0, 0.0, 0.0
+
+    def crossing_clear(self, beta):
+        """After turning, require room to start; leave later checks to CROSS."""
+        free = self.rectangle_free(beta)
+        minimum = self.stop + 0.005
+        self.debug("cross-check", f"CROSS entry free={free:.3f}m minimum={minimum:.3f}m "
+                   f"heading_error={math.degrees(beta):+.2f}deg; clearance checked during travel")
+        return free > minimum
+
+    # Pure translation and pure rotation; integrate only the command actually sent.
+    def track(self, points, dt):
+        p = points - self.velocity * dt
+        angle = self.omega * dt
+        cs, sn = math.cos(angle), math.sin(angle)
+        return np.column_stack((p[:, 0] * cs - p[:, 1] * sn,
+                                p[:, 1] * cs + p[:, 0] * sn))
+
+    def publish_motion(self, beta, speed, turn):
+        target = direction(beta) * max(0.0, speed)
+        current_speed = float(np.linalg.norm(self.velocity))
+        # Settle translation before turning, and settle before changing direction.
+        if abs(turn) > 1e-9 or abs(self.omega) > 1e-9:
+            target[:] = 0.0
+        if current_speed > 1e-4 and speed > 0.0:
+            if float(self.velocity @ direction(beta)) / current_speed < math.cos(math.radians(10)):
+                target[:] = 0.0
+        if current_speed > 1e-4:
             turn = 0.0
-            if not self.motion_clear(v * math.sin(beta) * self.DT,
-                                     v * math.cos(beta) * self.DT, 0.0):
-                v = 0.0
-        self.world_prev = float(wrap(beta + self.yaw))
-        return beta, v, turn
-
-    # ----------------------------------------------------- crossing (Part 2)
-
-    def latch(self, cand):
-        """Commit to a crossing. The direction is frozen from here, never recomputed."""
-        _, beta, needs_rotation, Pa, Pb = cand
-        self.theta_star = float(wrap(beta + self.yaw))   # startup-relative, so it survives
-        self.edges = np.stack([Pa, Pb])
-        self.needs_rotation = needs_rotation
-        self.latch_ticks = 0
-        self.state = self.ALIGN if needs_rotation else self.CROSS
-        self.get_logger().info(
-            f"{self.state} bearing {math.degrees(beta):+.0f} deg, "
-            f"{'rotating' if needs_rotation else 'strafing'}")
-        return None
-
-    def track_edges(self, dt):
-        """Carry the latched edge points through the motion just commanded.
-
-        Detection cannot do this job. As the robot enters the opening its two edges
-        spread toward opposite sides of the scan and stop satisfying the pairing rules,
-        which is what a SUCCESSFUL crossing looks like -- so losing the candidate must
-        never release the latch. A crossing lasts under a second, so this integration is
-        bounded by construction.
-        """
-        dx, dy = -self.cmd_y * dt, self.cmd_x * dt      # body (right, nose) displacement
-        dpsi = -self.cmd_turn * dt                      # angular.z is CCW, psi is CW
-        p = self.edges - np.array([dx, dy])
-        cs, sn = math.cos(dpsi), math.sin(dpsi)
-        self.edges = np.stack([p[:, 0] * cs - p[:, 1] * sn,
-                               p[:, 1] * cs + p[:, 0] * sn], axis=1)
-
-    def crossing(self):
-        """ALIGN and CROSS. No re-selection, no heading recovery."""
-        delta = float(wrap(self.theta_star - self.yaw))
-        u = np.array([math.sin(delta), math.cos(delta)])
-        self.latch_ticks += 1
-        if self.latch_ticks > self.cross_timeout:
-            return self.release("timed out", block=40)
-        # Cleared once BOTH edges are behind the trailing edge. Computed from the
-        # tracked points, so it holds even after the detector has lost the gap.
-        f = self.edges @ u
-        if bool(np.all(f < -self.h_of(delta))):
-            return self.release("cleared", block=0)
-
-        if self.needs_rotation and abs(delta) > self.align_tol:
-            self.state = self.ALIGN
-            # psi must grow toward theta_star, i.e. rotate clockwise for delta > 0,
-            # which is negative angular.z.
-            turn = float(np.clip(-self.yaw_gain * delta, -self.max_w, self.max_w))
-            # Match assess(): finish alignment before starting the approach. Final
-            # output validation also checks any residual translation while braking.
-            if not self.motion_clear(0.0, 0.0, delta):
-                return self.release("no room to align", block=40)
-            return delta, 0.0, turn
-
-        self.state = self.CROSS
-        free = self.sweep_one(delta)
-        if free <= 0.0:
-            return self.release("blocked", block=40)
-        v = self.max_v * min(1.0, free / self.d_plan)
-        if not self.motion_clear(v * u[0] * self.DT, v * u[1] * self.DT, 0.0):
-            return self.release("would contact while crossing", block=40)
-        return delta, v, 0.0
-
-    def release(self, why, block):
-        """Drop the latch and hand back to cruise."""
-        self.get_logger().info(f"{self.state} released: {why}")
-        self.state, self.edges, self.block = self.CRUISE, None, block
-        return None
-
-    # ------------------------------------------------------------------ loop
+        delta = target - self.velocity
+        step = self.accel * self.DT
+        norm = float(np.linalg.norm(delta))
+        velocity = self.velocity + delta * min(1.0, step / norm) if norm > 0.0 else self.velocity.copy()
+        if np.linalg.norm(velocity) < 1e-5:
+            velocity[:] = 0.0
+        omega = self.omega + float(np.clip(turn - self.omega, -self.alpha * self.DT, self.alpha * self.DT))
+        if np.linalg.norm(velocity) > 0.0:
+            omega = 0.0
+            actual_beta = math.atan2(velocity[0], velocity[1])
+            rectangular = self.state in (self.CROSS, self.EXIT, self.RETREAT)
+            room = self.rectangle_free(actual_beta) if rectangular else self.bubble_free(actual_beta)
+            # v*DT + v^2/(2*a) must fit before the clearance boundary.
+            usable = max(0.0, room - self.stop)
+            limit = math.sqrt((self.accel * self.DT) ** 2 + 2 * self.accel * usable) - self.accel * self.DT
+            sent_speed = float(np.linalg.norm(velocity))
+            if sent_speed > limit:
+                velocity *= limit / sent_speed
+        if abs(omega) > 0.0 and not self.bubble_clear():
+            omega = 0.0
+            self.debug("turn-veto", "TURN held: an obstacle is inside the turning bubble")
+        self.velocity, self.omega = velocity, omega
+        msg = Twist()
+        msg.linear.x, msg.linear.y = float(velocity[1]), float(-velocity[0])
+        msg.angular.z = float(-omega)
+        self.pub_cmd_vel.publish(msg)
 
     def timer_callback(self):
-        """Controller loop"""
-
-        if self.px is None:
-            return # Does not run if the laser message is not received.
-
-        now = self.get_clock().now().nanoseconds * 1e-9
-        dt = self.DT if self.t_prev is None else min(max(now - self.t_prev, 0.0), 5 * self.DT)
-        self.t_prev = now
-
-        # Dead reckoning: integrate what was actually published, after rate limiting.
-        # angular.z is counterclockwise-positive and psi is clockwise-positive.
-        self.yaw = float(wrap(self.yaw - self.cmd_turn * dt))
-        if self.edges is not None:
-            self.track_edges(dt)
-
-        # A handler returns None when it changed state, so the new state acts this tick.
-        cmd = None
-        for _ in range(3):
-            cmd = self.cruise() if self.state == self.CRUISE else self.crossing()
-            if cmd is not None:
-                break
-        if cmd is None:
-            cmd = (0.0, 0.0, 0.0)
-
-        beta, v, turn = cmd
-        if self.overlapping():
-            self.get_logger().warn("something is inside the footprint, stopping")
-            v, turn = 0.0, 0.0
-        self.move_2D(beta, v, turn)
+        if self.points is None:
+            return
+        self.now = self.get_clock().now().nanoseconds * 1e-9
+        dt = 0.0 if self.last_tick is None else min(max(self.now - self.last_tick, 0.0), 0.25)
+        self.last_tick = self.now
+        self.yaw = wrap(self.yaw + self.omega * dt)
+        for name in ("edges", "waypoint", "entry"):
+            value = getattr(self, name)
+            if value is not None:
+                moved = self.track(np.atleast_2d(value), dt)
+                setattr(self, name, moved if value.ndim == 2 else moved[0])
+        self.failed = [(expiry, self.track(pair, dt)) for expiry, pair in self.failed if expiry > self.now]
+        # Keep the scan geometry in the same current frame as the tracked gap.
+        cloud_dt = min(max(self.now - self.cloud_time, 0.0), 0.25)
+        self.points = self.track(self.points, cloud_dt)
+        self.beam_points = self.track(self.beam_points, cloud_dt)
+        # The beam rays radiate from where the lidar was when the scan was taken.
+        self.lidar_origin = self.track(np.atleast_2d(self.lidar_origin), cloud_dt)[0]
+        self.cloud_time = self.now
+        beta, speed, turn = self.handle_state()
+        self.publish_motion(beta, speed, turn)
+        self.debug("status", f"STATUS state={self.state} side={'right' if self.side > 0 else 'left'} "
+                   f"yaw={math.degrees(self.yaw):+.1f}deg bubble_clear={self.bubble_clear()} "
+                   f"front_circle_free={self.bubble_free(-self.yaw):.3f}m "
+                   f"sent(right,forward,cw)=({self.velocity[0]:.3f},{self.velocity[1]:.3f},{self.omega:.3f}) "
+                   f"scan_age={self.now - self.scan_time:.3f}s")
 
 
 def main(args=None):
     rclpy.init(args=args)
-    obstacle_avoidance_node = ObstacleAvoidanceNode()
-    rclpy.spin(obstacle_avoidance_node)
-    rclpy.shutdown()
+    node = ObstacleAvoidanceNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if rclpy.ok():
+            node.pub_cmd_vel.publish(Twist())
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":
