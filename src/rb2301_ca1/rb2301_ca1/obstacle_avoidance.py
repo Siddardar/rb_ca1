@@ -9,20 +9,20 @@ import math
 
 np.set_printoptions(
     2, suppress=True
-)  # Print numpy arrays to specified d.p. and suppress scientific notation (e.g. 1e-5)
+)
 
-max_translate_velocity = 0.4 # Can be implemented as parameter
-max_turn_velocity = max_translate_velocity * 2 # Can be implemented as parameter
-set_logger_level("obstacle_avoidance", level=LoggingSeverity.DEBUG) # Configure to either LoggingSeverity.INFO or LoggingSeverity.DEBUG  
+max_translate_velocity = 0.4
+max_turn_velocity = max_translate_velocity * 2
+set_logger_level("obstacle_avoidance", level=LoggingSeverity.DEBUG)
 
 class Can(NamedTuple):
-    bearing: float # degrees, +ve anticlockwise, 0 = straight ahead
+    bearing: float
     distance: float
 
 class DoorWay(NamedTuple):
     left_can: Can
     right_can: Can
-    gap: float # distance between the two readings
+    gap: float
 
 class ObstacleAvoidanceNode(Node):
     def __init__(self):
@@ -30,50 +30,47 @@ class ObstacleAvoidanceNode(Node):
         super().__init__("obstacle_avoidance")
         self.get_logger().info("Starting Obstacle Avoidance")
 
-        self.pub_cmd_vel = self.create_publisher(Twist, "cmd_vel", 10)  # Publish to cmd_vel node
-        self.sub_scan = self.create_subscription(LaserScan, "scan", self.sub_scan_callback, 2) # The subscriber to the Lidar ranges.
-        self.last_scan = None # Copied laser scan message
+        self.pub_cmd_vel = self.create_publisher(Twist, "cmd_vel", 10)
+        self.sub_scan = self.create_subscription(LaserScan, "scan", self.sub_scan_callback, 2)
+        self.last_scan = None
 
         self.DT = 0.05 # controller period (s)
-        self.timer = self.create_timer(self.DT, self.timer_callback)  # Runs at 20Hz. Can be changed.
+        self.timer = self.create_timer(self.DT, self.timer_callback)
 
-        self.MAX_ACCEL = 0.8 # m/s^2 per axis; lower = gentler direction changes (0.4 m/s -> 0 takes 0.4 / MAX_ACCEL s)
-        self.cmd_x = 0.0 # velocity actually sent last tick, so we can ramp towards the new target
+        self.MAX_ACCEL = 0.8 # m/s^2 
+        self.cmd_x = 0.0 # velocity sent last tick
         self.cmd_y = 0.0
         self.cmd_turn = 0.0
 
-        self.idx_per_deg = None # calc the number of indexes in scan array that correspond to 1 deg
+        self.idx_per_deg = None # num of indexes in scan array that correspond to 1 deg
         self.side = None # +1 = left, -1 = right; sticks until that side is fully blocked, then flips
-        self.doorway = None # the gap we have committed to; while it is set nothing else runs
-        self.drive_left = None # metres still to drive through the gap, set once we are lined up
-        self.turned = 0.0 # net heading change since we committed, so we can undo it afterwards
-        self.stuck = 0 # ticks the doorway's bearings have not moved, i.e. the base is ignoring us
+        self.doorway = None # the gap robot commits to
+        self.drive_left = None # metres to drive through the gap
+        self.turned = 0.0 # net heading change since robot committed -> to undo after
+        self.stuck = 0 # edge case where robot is "stuck"
         self.last_bearings = None
 
-        self.SAFE_DIST = 0.4
-        self.SIDE_DIST = 0.25 # sideways we only need half a robot width (0.096) plus the 0.09 m it takes to stop
+        self.SAFE_DIST = 0.4 # front safe dist
+        self.SIDE_DIST = 0.25 # side safe dist
 
         self.margin = 0.05
         self.ROBOT_WIDTH = 0.20 + self.margin
         self.ROBOT_LEN = 0.22 + self.margin
 
-        self.stop = False
-
-    def regularise(self, target, current):
-        """Move current towards target by at most MAX_ACCEL * DT, so velocity ramps instead of jumping"""
+    def limit_acceleration(self, target, current):
+        """Move current towards target by at most MAX_ACCEL * DT, so velocity increases/decreases gradually"""
         step = self.MAX_ACCEL * self.DT
         return float(np.clip(target, current - step, current + step))
 
     def move_2D(self, x: float = 0.0, y: float = 0.0, turn: float = 0.0):
-        """Publishes a twist command to move in 2D space. +ve x is forwards, +ve y is left, and +ve turn is anticlockwise.
-        x and y are rate limited: a direction change ramps one axis down while the other ramps up, so the robot slows through the switch rather than stopping or jerking"""
+        """Publishes a twist command to move in 2D space. +ve x is forwards, +ve y is left, and +ve turn is anticlockwise."""
         twist_msg = Twist()
         x = np.clip(x, -max_translate_velocity, max_translate_velocity)
         y = np.clip(y, -max_translate_velocity, max_translate_velocity)
         turn = np.clip(turn, -max_turn_velocity, max_turn_velocity)
 
-        x = self.cmd_x = self.regularise(x, self.cmd_x)
-        y = self.cmd_y = self.regularise(y, self.cmd_y)
+        x = self.cmd_x = self.limit_acceleration(x, self.cmd_x)
+        y = self.cmd_y = self.limit_acceleration(y, self.cmd_y)
 
         twist_msg.linear.x, twist_msg.linear.y, twist_msg.linear.z = float(x), float(y), 0.0
         twist_msg.angular.x, twist_msg.angular.y, twist_msg.angular.z = 0.0, 0.0, float(turn)
@@ -96,8 +93,8 @@ class ObstacleAvoidanceNode(Node):
         pair is two cans out of the same row with an opening between them"""
 
         SIMILAR = 0.2 # two cans this close in range are taken to be part of the same row
-        MAX_SWEEP = 70 # a partner further round than this is on another wall, not beside this can
-        MAX_GAP = 0.5 # a single missing cell in the 0.2 m grid is 0.4 m, anything wider is not one hole
+        MAX_SWEEP = 70 # a can further round than this likely not beside this can -> cannot form a doorway
+        MAX_GAP = 0.5 # filter out doorways the robot can strafe through normally
 
         cans = self.detect_cans(scan)
         doorways = []
@@ -117,10 +114,10 @@ class ObstacleAvoidanceNode(Node):
             if left is None: # nothing else at this distance, so this can is not one side of anything
                 continue
 
-            if abs(left.bearing) >= 110 or abs(right.bearing) >= 110: # at least one side has to be in front
+            if abs(left.bearing) >= 110 or abs(right.bearing) >= 110: # both cans need to be in front for it to be a doorway
                 continue
 
-            # cosine rule, with the angle swept anticlockwise from the right can round to the left one
+            # cosine rule to calculate the distance between two cans in a doorway
             angle = math.radians((left.bearing - right.bearing) % 360)
             gap = math.sqrt(right.distance ** 2 + left.distance ** 2
                             - 2 * right.distance * left.distance * math.cos(angle))
@@ -133,13 +130,12 @@ class ObstacleAvoidanceNode(Node):
         return doorways
 
     def detect_cans(self, scan):
-        """Splits the scan where the range jumps, then keeps the groups that are nearer than their
-        neighbours. Bearing is in degrees, +ve anticlockwise, 0 = straight ahead"""
+        """Splits the scan where the range jumps, then keeps the groups that are nearer than their neighbours."""
 
         JUMP = 0.06 # a step bigger than this between neighbouring beams is the edge of an object
 
         def to_can(run):
-            """A finished group becomes one can at its middle beam, bearing and range off the same reading"""
+            """A finished group becomes one can at its middle beam"""
             middle = run[len(run) // 2]
             bearing = middle / self.idx_per_deg
             return Can(float(bearing - 360 if bearing > 180 else bearing), float(scan[middle]))
@@ -147,8 +143,8 @@ class ObstacleAvoidanceNode(Node):
         cans = []
         step = np.abs(scan - np.roll(scan, 1)) # step[i] is the jump from beam i-1 to beam i
 
-        # the scan wraps, so a can sat at 0 deg is split across both ends of the array. starting the
-        # walk at the biggest jump means we begin on a real edge and every group comes out in one piece
+        # the scan wraps, so a can sat at 0 deg is split across both ends of the array.
+        # -> start on a rising edge to capture all groups (cans and empty spaces)
         groups = []
         run = [] # indexes of the current group
 
@@ -160,13 +156,11 @@ class ObstacleAvoidanceNode(Node):
 
         groups.append(run)
 
-        if len(groups) < 2: # one unbroken surface all the way round, so nothing to pick out of it
+        if len(groups) < 2: # one unbroken surface all the way round
             return cans
 
-        # a can is a peak, so it is nearer than what sits either side of it. the empty space between
-        # two cans is further than both and drops out here, without naming a max range anywhere
+        # filter empty spaces
         nearest = [scan[g].min() for g in groups]
-
         for idx, group in enumerate(groups):
             if nearest[idx] > nearest[idx - 1] and nearest[idx] > nearest[(idx + 1) % len(groups)]:
                 continue
@@ -175,7 +169,7 @@ class ObstacleAvoidanceNode(Node):
         return cans
 
     def corridor(self, heading_deg, corridor_width):
-        """Distance to nearest reading in a corridor along heading (0 = front, +ve = anticlockwise)"""
+        """Distance to nearest reading in a corridor along heading"""
         n = len(self.last_scan)
 
         # angles (in rad for np.sin/np.cos) in corridor dir
@@ -188,12 +182,13 @@ class ObstacleAvoidanceNode(Node):
         # also if lateral dis < width / 2 its in path
         in_path = (fwd > 0) & (np.abs(lat) < corridor_width / 2) # boolean arr
 
-        # fwd[in_path] acts like a boolean mask keeping only values in fwd that have a corresponding True in in_path
+        # fwd[in_path] -> a boolean mask keeping only values in fwd that 
+        # have a corresponding True in in_path
         # returns the closest object in dir of corridor if any exists
         return np.min(fwd[in_path]) if in_path.any() else np.inf
 
     def doorway_frame(self, door):
-        """The gap's midpoint and the line joining its two cans, both in robot coordinates"""
+        """The gap's midpoint and the line joining its two cans"""
         points = np.array([[c.distance * math.cos(math.radians(c.bearing)),
                             c.distance * math.sin(math.radians(c.bearing))]
                            for c in (door.left_can, door.right_can)])
@@ -201,13 +196,10 @@ class ObstacleAvoidanceNode(Node):
 
     def drive_through(self):
         """Drives straight through the gap, keeping to the middle of whatever is either side, then
-        turns back onto the heading we came in on"""
+        turns back onto the heading robot came in on"""
 
-        CENTRE_GAIN = 1.0 # the error here is a centimetre or two, nothing to be aggressive about
-        LOOKAHEAD = 0.5 # only steer by cans in the channel we are in, not the next row
-        TURN_RATE = 0.5 # rad/s, held flat so the turn back lands on the heading instead of creeping up on it
-        TURN_TOL = np.deg2rad(1) # whatever is left here is heading error we never get back
-        TURN_GAIN = 1.5
+        LOOKAHEAD = 0.5 # only steer by cans in the doorway
+        TURN_RATE = 0.5 # rad/s
 
         if self.drive_left > 0: # still going through
             beside = [(c.distance * math.cos(math.radians(c.bearing)), c.distance * math.sin(math.radians(c.bearing)))
@@ -220,40 +212,34 @@ class ObstacleAvoidanceNode(Node):
 
             self.drive_left -= self.cmd_x * self.DT
             self.get_logger().debug(f"through: {self.drive_left:.3f} m left, off centre by {middle:+.3f}")
-            self.move_2D(max_translate_velocity, CENTRE_GAIN * middle, 0)
+            self.move_2D(max_translate_velocity, middle, 0)
 
-        # proportional version, eases in but only ever gets within TURN_TOL. kept for the real robot
-        # elif abs(self.turned) > TURN_TOL: # swing back onto the heading we came in on
-        #     self.get_logger().debug(f"turning back: {math.degrees(self.turned):.1f} deg")
-        #     self.move_2D(0, 0, -TURN_GAIN * self.turned)
-
-        elif abs(self.turned) > 1e-6: # swing back onto the heading we came in on
-            rate = min(TURN_RATE, abs(self.turned) / self.DT) # last tick turns exactly what is left
+        elif abs(self.turned) > 1e-6: # turn back onto the heading we came in on
+            rate = min(TURN_RATE, abs(self.turned) / self.DT) 
             self.get_logger().debug(f"turning back: {math.degrees(self.turned):.1f} deg")
             self.move_2D(0, 0, -math.copysign(rate, self.turned))
 
-        else: # done, hand back to the normal behaviour
+        else: # done -> back to the normal behaviour
             self.get_logger().debug("through the gap")
             self.doorway, self.drive_left, self.turned = None, None, 0.0
             self.move_2D(0, 0, 0)
 
     def take_doorway(self):
-        """Everything the robot does once a doorway is picked. Slides along the wall onto the normal
-        through the gap's midpoint, then turns to face it. No corridor checks run while this is active"""
+        """Aligns the robot to face the doorway along the normal of the middle of the gap"""
 
-        MATCH = 0.10 # the midpoint only moves a strafe tick's worth between scans
-        ALIGN_TOL = 0.05 # close enough to the normal to stop sliding
+        MATCH = 0.10 # max diff between midpoints for two doorways to be the same
+        ALIGN_TOL = 0.05 # close enough to the normal to stop adjustinig
         TURN_TOL = np.deg2rad(3) # close enough to facing the gap to stop turning
         TURN_GAIN = 1.5
-        STUCK = 30 # ticks with the bearings unchanged, about 10 scans at 7 Hz
-        SLIDE_GAIN = self.MAX_ACCEL / max_translate_velocity # hits full speed just as the ramp can still follow it down
+        STUCK = 30 # edge case -> if bearings remain unchanged for 30 ticks assume alligned and continue
+        SLIDE_GAIN = self.MAX_ACCEL / max_translate_velocity
 
-        self.turned += self.cmd_turn * self.DT # net heading change, so the turn back can undo it
+        self.turned += self.cmd_turn * self.DT # estimation on amount turned
 
         if self.drive_left is not None: # lined up already, so we are on our way through
             return self.drive_through()
 
-        # the stored reading is a tick out of date, so refresh it off this scan
+        # re-find doorway after turning to better allign with it
         target, _ = self.doorway_frame(self.doorway)
         same = [(np.linalg.norm(self.doorway_frame(d)[0] - target), d)
                 for d in self.calculate_doorways(self.last_scan)]
@@ -262,23 +248,21 @@ class ObstacleAvoidanceNode(Node):
         if same:
             self.doorway = min(same, key=lambda match: match[0])[1]
 
-        # a turn command too small for the base to act on leaves the bearings sitting on the same beams,
-        # so count how long nothing has moved and give up on turning once it is clearly not going to
+        # count number of ticks bearing is const
         bearings = (self.doorway.left_can.bearing, self.doorway.right_can.bearing)
         self.stuck = self.stuck + 1 if bearings == self.last_bearings else 0
         self.last_bearings = bearings
 
-        # the normal runs through the midpoint at right angles to the line joining the two cans,
-        # so how far off it we are is the midpoint measured along that line
+        # calc distance to normal of midpoint of gap
         mid, chord = self.doorway_frame(self.doorway)
         chord = chord / np.linalg.norm(chord)
         offset = float(mid @ chord)
 
-        turn = math.atan2(mid[1], mid[0]) # bearing to the midpoint, so zero means we are facing the gap
+        turn = math.atan2(mid[1], mid[0]) # bearing to the midpoint
 
         self.get_logger().debug(f"repick: {self.doorway}")
 
-        if abs(offset) > ALIGN_TOL: # slide along the wall onto the normal, easing off as it closes
+        if abs(offset) > ALIGN_TOL: # slide along the wall onto the normal
             self.get_logger().debug(f"alligning: {offset}")
             self.move_2D(0, SLIDE_GAIN * offset * chord[1], 0)
         elif abs(turn) > TURN_TOL and self.stuck < STUCK: # on the normal, so swing round to face the gap
@@ -293,18 +277,14 @@ class ObstacleAvoidanceNode(Node):
     def timer_callback(self):
         """Controller loop"""
 
-        if self.stop:
-            return self.move_2D(0,0,0)
-
-
         if self.last_scan is None:
-            return # Does not run if the laser message is not received.
+            return
 
-        if self.doorway is not None: # committed to a gap, so nothing else gets a say
+        if self.doorway is not None: # committed to a doorway
             self.take_doorway()
             return
 
-        # strip ahead is as wide as the robot, strips to the sides are as long as the robot
+        # strip ahead -> wide as the robot, strips to the sides -> long as the robot
         front = self.corridor(0, self.ROBOT_WIDTH)
         left = self.corridor(90, self.ROBOT_LEN)
         right = self.corridor(-90, self.ROBOT_LEN)
@@ -315,7 +295,7 @@ class ObstacleAvoidanceNode(Node):
             self.move_2D(max_translate_velocity, 0, 0)
             return
 
-        # first time blocked: pick the side with more room, after that stick with it
+        # first time blocked: pick the side with more room until blocked
         if self.side is None:
             self.side = 1 if left > right else -1
 
