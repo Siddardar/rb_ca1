@@ -47,8 +47,11 @@ class ObstacleAvoidanceNode(Node):
         self.doorway = None # the gap we have committed to; while it is set nothing else runs
         self.drive_left = None # metres still to drive through the gap, set once we are lined up
         self.turned = 0.0 # net heading change since we committed, so we can undo it afterwards
+        self.stuck = 0 # ticks the doorway's bearings have not moved, i.e. the base is ignoring us
+        self.last_bearings = None
 
         self.SAFE_DIST = 0.4
+        self.SIDE_DIST = 0.25 # sideways we only need half a robot width (0.096) plus the 0.09 m it takes to stop
 
         self.margin = 0.05
         self.ROBOT_WIDTH = 0.20 + self.margin
@@ -93,7 +96,8 @@ class ObstacleAvoidanceNode(Node):
         pair is two cans out of the same row with an opening between them"""
 
         SIMILAR = 0.2 # two cans this close in range are taken to be part of the same row
-        MAX_SWEEP = 90 # a partner further round than this is on another wall, not beside this can
+        MAX_SWEEP = 70 # a partner further round than this is on another wall, not beside this can
+        MAX_GAP = 0.5 # a single missing cell in the 0.2 m grid is 0.4 m, anything wider is not one hole
 
         cans = self.detect_cans(scan)
         doorways = []
@@ -113,7 +117,7 @@ class ObstacleAvoidanceNode(Node):
             if left is None: # nothing else at this distance, so this can is not one side of anything
                 continue
 
-            if abs(left.bearing) >= 90 and abs(right.bearing) >= 90: # at least one side has to be in front
+            if abs(left.bearing) >= 110 or abs(right.bearing) >= 110: # at least one side has to be in front
                 continue
 
             # cosine rule, with the angle swept anticlockwise from the right can round to the left one
@@ -121,7 +125,7 @@ class ObstacleAvoidanceNode(Node):
             gap = math.sqrt(right.distance ** 2 + left.distance ** 2
                             - 2 * right.distance * left.distance * math.cos(angle))
 
-            if gap < self.ROBOT_WIDTH: # too narrow to fit through
+            if not self.ROBOT_WIDTH <= gap <= MAX_GAP: # too narrow to fit through, or not one opening
                 continue
 
             doorways.append(DoorWay(left, right, gap))
@@ -241,6 +245,7 @@ class ObstacleAvoidanceNode(Node):
         ALIGN_TOL = 0.05 # close enough to the normal to stop sliding
         TURN_TOL = np.deg2rad(3) # close enough to facing the gap to stop turning
         TURN_GAIN = 1.5
+        STUCK = 30 # ticks with the bearings unchanged, about 10 scans at 7 Hz
         SLIDE_GAIN = self.MAX_ACCEL / max_translate_velocity # hits full speed just as the ramp can still follow it down
 
         self.turned += self.cmd_turn * self.DT # net heading change, so the turn back can undo it
@@ -257,6 +262,12 @@ class ObstacleAvoidanceNode(Node):
         if same:
             self.doorway = min(same, key=lambda match: match[0])[1]
 
+        # a turn command too small for the base to act on leaves the bearings sitting on the same beams,
+        # so count how long nothing has moved and give up on turning once it is clearly not going to
+        bearings = (self.doorway.left_can.bearing, self.doorway.right_can.bearing)
+        self.stuck = self.stuck + 1 if bearings == self.last_bearings else 0
+        self.last_bearings = bearings
+
         # the normal runs through the midpoint at right angles to the line joining the two cans,
         # so how far off it we are is the midpoint measured along that line
         mid, chord = self.doorway_frame(self.doorway)
@@ -270,12 +281,13 @@ class ObstacleAvoidanceNode(Node):
         if abs(offset) > ALIGN_TOL: # slide along the wall onto the normal, easing off as it closes
             self.get_logger().debug(f"alligning: {offset}")
             self.move_2D(0, SLIDE_GAIN * offset * chord[1], 0)
-        elif abs(turn) > TURN_TOL: # on the normal, so swing round to face the gap
-            self.get_logger().debug(f"turning: {turn}")
+        elif abs(turn) > TURN_TOL and self.stuck < STUCK: # on the normal, so swing round to face the gap
+            self.get_logger().debug(f"turning: {math.degrees(turn):.1f} deg, stuck {self.stuck}")
             self.move_2D(0, 0, TURN_GAIN * turn)
         else: # lined up and pointing at it, so set off through
             self.drive_left = mid[0] + self.ROBOT_LEN + 0.30 # far enough for the tail to clear the cans
-            self.get_logger().debug(f"lined up, driving {self.drive_left:.3f} m")
+            self.stuck = 0
+            self.get_logger().debug(f"lined up ({math.degrees(turn):.1f} deg off), driving {self.drive_left:.3f} m")
             self.move_2D(0, 0, 0)
 
     def timer_callback(self):
@@ -309,13 +321,13 @@ class ObstacleAvoidanceNode(Node):
 
         # committed side fully blocked: flip to the other side
         room = left if self.side > 0 else right
-        if room <= self.SAFE_DIST:
+        if room <= self.SIDE_DIST:
             self.side = -self.side
             room = left if self.side > 0 else right
             #self.get_logger().debug(f"side blocked, switching to {'L' if self.side > 0 else 'R'}")
 
         # both sides blocked: go to side has more room and re-check next tick
-        if room <= self.SAFE_DIST:
+        if room <= self.SIDE_DIST:
             self.side = 1 if left > right else -1
             room = left if self.side > 0 else right
             #self.get_logger().debug(f"both blocked, recheck {'L' if self.side > 0 else 'R'} (left: {left:.2f}, right: {right:.2f})")

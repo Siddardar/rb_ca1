@@ -1,114 +1,264 @@
-[DEBUG] [1790877842.429912716] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3471088707447052), right_can=Can(bearing=-29.208130701053847, distance=0.3751141130924225), gap=0.39794852091681376)
-[DEBUG] [1790877842.430323134] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.479547967] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3471088707447052), right_can=Can(bearing=-29.208130701053847, distance=0.3751141130924225), gap=0.39794852091681376)
-[DEBUG] [1790877842.479779134] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.528464676] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.34152889251708984), right_can=Can(bearing=-29.208130701053847, distance=0.3685022294521332), gap=0.3912035770162308)
-[DEBUG] [1790877842.528690718] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.578647636] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.34152889251708984), right_can=Can(bearing=-29.208130701053847, distance=0.3685022294521332), gap=0.3912035770162308)
-[DEBUG] [1790877842.578928262] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.628731513] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.34152889251708984), right_can=Can(bearing=-29.208130701053847, distance=0.3685022294521332), gap=0.3912035770162308)
-[DEBUG] [1790877842.631140226] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.678502473] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3322492837905884), right_can=Can(bearing=-29.208130701053847, distance=0.35784009099006653), gap=0.38018663991275375)
-[DEBUG] [1790877842.679393599] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.728599600] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3322492837905884), right_can=Can(bearing=-29.208130701053847, distance=0.35784009099006653), gap=0.38018663991275375)
-[DEBUG] [1790877842.728823475] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.778453810] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3322492837905884), right_can=Can(bearing=-29.208130701053847, distance=0.35784009099006653), gap=0.38018663991275375)
-[DEBUG] [1790877842.778688185] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877842.828561020] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3472270965576172), right_can=Can(bearing=-29.208130701053847, distance=0.35910022258758545), gap=0.38864371091937944)
-[DEBUG] [1790877842.828779937] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877842.879328565] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3472270965576172), right_can=Can(bearing=-29.208130701053847, distance=0.35910022258758545), gap=0.38864371091937944)
-[DEBUG] [1790877842.879545065] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877842.934181283] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3472270965576172), right_can=Can(bearing=-29.208130701053847, distance=0.35910022258758545), gap=0.38864371091937944)
-[DEBUG] [1790877842.937330705] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877842.978532567] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3356495797634125), right_can=Can(bearing=-29.208130701053847, distance=0.3686790466308594), gap=0.3883985505132852)
-[DEBUG] [1790877842.978816151] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.028610778] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3356495797634125), right_can=Can(bearing=-29.208130701053847, distance=0.3686790466308594), gap=0.3883985505132852)
-[DEBUG] [1790877843.030969115] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.078499988] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3356495797634125), right_can=Can(bearing=-29.208130701053847, distance=0.3686790466308594), gap=0.3883985505132852)
-[DEBUG] [1790877843.081745368] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.136714670] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3356495797634125), right_can=Can(bearing=-29.208130701053847, distance=0.3686790466308594), gap=0.3883985505132852)
-[DEBUG] [1790877843.149530317] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.184314085] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3356495797634125), right_can=Can(bearing=-29.208130701053847, distance=0.3686790466308594), gap=0.3883985505132852)
-[DEBUG] [1790877843.184644085] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.230507247] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.34686776995658875), right_can=Can(bearing=-29.208130701053847, distance=0.37438106536865234), gap=0.39738964890941)
-[DEBUG] [1790877843.230734247] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.279851998] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.34686776995658875), right_can=Can(bearing=-29.208130701053847, distance=0.37438106536865234), gap=0.39738964890941)
-[DEBUG] [1790877843.282391585] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.332483712] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.32705289125442505), right_can=Can(bearing=-29.208130701053847, distance=0.36665016412734985), gap=0.38300345955152554)
-[DEBUG] [1790877843.332701921] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.380349794] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.32705289125442505), right_can=Can(bearing=-29.208130701053847, distance=0.36665016412734985), gap=0.38300345955152554)
-[DEBUG] [1790877843.380568753] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.428570626] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.32705289125442505), right_can=Can(bearing=-29.208130701053847, distance=0.36665016412734985), gap=0.38300345955152554)
-[DEBUG] [1790877843.428788210] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.479394963] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3351176083087921), right_can=Can(bearing=-29.208130701053847, distance=0.3622676730155945), gap=0.38426812951196393)
-[DEBUG] [1790877843.480761215] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.532558512] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3351176083087921), right_can=Can(bearing=-29.208130701053847, distance=0.3622676730155945), gap=0.38426812951196393)
-[DEBUG] [1790877843.532783637] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.578449382] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3351176083087921), right_can=Can(bearing=-29.208130701053847, distance=0.3622676730155945), gap=0.38426812951196393)
-[DEBUG] [1790877843.578670132] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.629560344] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3353223204612732), right_can=Can(bearing=-29.208130701053847, distance=0.38091495633125305), gap=0.39580387345526846)
-[DEBUG] [1790877843.632255390] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.679467220] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3353223204612732), right_can=Can(bearing=-29.208130701053847, distance=0.38091495633125305), gap=0.39580387345526846)
-[DEBUG] [1790877843.679714013] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.729554848] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3353223204612732), right_can=Can(bearing=-29.208130701053847, distance=0.38091495633125305), gap=0.39580387345526846)
-[DEBUG] [1790877843.729795056] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.779471891] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3353223204612732), right_can=Can(bearing=-29.208130701053847, distance=0.38091495633125305), gap=0.39580387345526846)
-[DEBUG] [1790877843.782368646] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877843.828601516] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3187941014766693), right_can=Can(bearing=-29.208130701053847, distance=0.3914036452770233), gap=0.3953244521478386)
-[DEBUG] [1790877843.828820100] [obstacle_avoidance]: alligning: -0.06522128105111556
-[DEBUG] [1790877843.878800644] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3187941014766693), right_can=Can(bearing=-29.208130701053847, distance=0.3914036452770233), gap=0.3953244521478386)
-[DEBUG] [1790877843.879017686] [obstacle_avoidance]: alligning: -0.06522128105111556
-[DEBUG] [1790877843.930007981] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3187941014766693), right_can=Can(bearing=-29.208130701053847, distance=0.3914036452770233), gap=0.3953244521478386)
-[DEBUG] [1790877843.930297106] [obstacle_avoidance]: alligning: -0.06522128105111556
-[DEBUG] [1790877843.978377147] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3158106207847595), right_can=Can(bearing=-29.208130701053847, distance=0.3692933917045593), gap=0.37948097994752095)
-[DEBUG] [1790877843.978605730] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.028536441] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3158106207847595), right_can=Can(bearing=-29.208130701053847, distance=0.3692933917045593), gap=0.37948097994752095)
-[DEBUG] [1790877844.028757441] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.079133277] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3158106207847595), right_can=Can(bearing=-29.208130701053847, distance=0.3692933917045593), gap=0.37948097994752095)
-[DEBUG] [1790877844.081747031] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.129616196] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.53311678883655, distance=0.3158106207847595), right_can=Can(bearing=-29.208130701053847, distance=0.3692933917045593), gap=0.37948097994752095)
-[DEBUG] [1790877844.129834780] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.178601613] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.533999903205526, distance=0.3360990285873413), right_can=Can(bearing=-28.707689143869402, distance=0.3615166246891022), gap=0.3868454357154129)
-[DEBUG] [1790877844.178846405] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.230490869] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.03444146039001, distance=0.3421406149864197), right_can=Can(bearing=-28.2072475866849, distance=0.36642298102378845), gap=0.39284852017319966)
-[DEBUG] [1790877844.230711827] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.278592284] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.03444146039001, distance=0.3421406149864197), right_can=Can(bearing=-28.2072475866849, distance=0.36642298102378845), gap=0.39284852017319966)
-[DEBUG] [1790877844.278826868] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.329576663] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.03444146039001, distance=0.3421406149864197), right_can=Can(bearing=-28.2072475866849, distance=0.36642298102378845), gap=0.39284852017319966)
-[DEBUG] [1790877844.329791871] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.379973207] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.03444146039001, distance=0.3538573682308197), right_can=Can(bearing=-28.707689143869402, distance=0.35422569513320923), gap=0.3946331327066258)
-[DEBUG] [1790877844.381577835] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.428571582] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.03444146039001, distance=0.3538573682308197), right_can=Can(bearing=-28.707689143869402, distance=0.35422569513320923), gap=0.3946331327066258)
-[DEBUG] [1790877844.431200503] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.478518625] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.03444146039001, distance=0.3538573682308197), right_can=Can(bearing=-28.707689143869402, distance=0.35422569513320923), gap=0.3946331327066258)
-[DEBUG] [1790877844.478744834] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.531747508] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.03444146039001, distance=0.3538573682308197), right_can=Can(bearing=-28.707689143869402, distance=0.35422569513320923), gap=0.3946331327066258)
-[DEBUG] [1790877844.532036216] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.579600256] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.533999903205526, distance=0.34576427936553955), right_can=Can(bearing=-28.707689143869402, distance=0.362579882144928), gap=0.39245617522118287)
-[DEBUG] [1790877844.581395384] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.628644465] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.533999903205526, distance=0.34576427936553955), right_can=Can(bearing=-28.707689143869402, distance=0.362579882144928), gap=0.39245617522118287)
-[DEBUG] [1790877844.631284886] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.678548633] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.533999903205526, distance=0.34576427936553955), right_can=Can(bearing=-28.707689143869402, distance=0.362579882144928), gap=0.39245617522118287)
-[DEBUG] [1790877844.678780842] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877844.732499850] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.3318510055541992), right_can=Can(bearing=-28.707689143869402, distance=0.37425461411476135), gap=0.39000630780291257)
-[DEBUG] [1790877844.732745434] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.778524345] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.3318510055541992), right_can=Can(bearing=-28.707689143869402, distance=0.37425461411476135), gap=0.39000630780291257)
-[DEBUG] [1790877844.778787804] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.828568347] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.3318510055541992), right_can=Can(bearing=-28.707689143869402, distance=0.37425461411476135), gap=0.39000630780291257)
-[DEBUG] [1790877844.828816556] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.878413266] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.3318510055541992), right_can=Can(bearing=-28.707689143869402, distance=0.37425461411476135), gap=0.39000630780291257)
-[DEBUG] [1790877844.878664266] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.929591437] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.3318510055541992), right_can=Can(bearing=-28.707689143869402, distance=0.37425461411476135), gap=0.39000630780291257)
-[DEBUG] [1790877844.929825770] [obstacle_avoidance]: no allignment or turning needed :)
-[DEBUG] [1790877844.978496062] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.36755821108818054), right_can=Can(bearing=-28.707689143869402, distance=0.3594036400318146), gap=0.39992526611011014)
-[DEBUG] [1790877844.981811276] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877845.029647816] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.36755821108818054), right_can=Can(bearing=-28.707689143869402, distance=0.3594036400318146), gap=0.39992526611011014)
-[DEBUG] [1790877845.029859858] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877845.078455982] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.36755821108818054), right_can=Can(bearing=-28.707689143869402, distance=0.3594036400318146), gap=0.39992526611011014)
-[DEBUG] [1790877845.078721649] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877845.128354609] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.36755821108818054), right_can=Can(bearing=-28.707689143869402, distance=0.3594036400318146), gap=0.39992526611011014)
-[DEBUG] [1790877845.131473323] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877845.178655695] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.34671550989151), right_can=Can(bearing=-29.208130701053847, distance=0.3623453378677368), gap=0.3928187923763191)
-[DEBUG] [1790877845.178896571] [obstacle_avoidance]: turning: 0.05235987755982989
-[DEBUG] [1790877845.229549074] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.34671550989151), right_can=Can(bearing=-29.208130701053847, distance=0.3623453378677368), gap=0.3928187923763191)
-[DEBUG] [1790877845.229760324] [obstacle_avoidance]: turning: 0.05235987755982989
+[INFO] [1790946896.959891208] [obstacle_avoidance]: Starting Obstacle Avoidance
+[DEBUG] [1790946899.950810151] [obstacle_avoidance]: picked: DoorWay(left_can=Can(bearing=43.03797391786591, distance=0.5662230253219604), right_can=Can(bearing=0.0, distance=0.4030579626560211), gap=0.38658830573442754)
+[DEBUG] [1790946899.953809713] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=43.03797391786591, distance=0.5662230253219604), right_can=Can(bearing=0.0, distance=0.4030579626560211), gap=0.38658830573442754)
+[DEBUG] [1790946899.954111715] [obstacle_avoidance]: alligning: 0.20454937565154427
+[DEBUG] [1790946900.001081076] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=43.03797391786591, distance=0.5662230253219604), right_can=Can(bearing=0.0, distance=0.4030579626560211), gap=0.38658830573442754)
+[DEBUG] [1790946900.001411828] [obstacle_avoidance]: alligning: 0.20454937565154427
+[DEBUG] [1790946900.051172249] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=43.03797391786591, distance=0.5662230253219604), right_can=Can(bearing=0.0, distance=0.4030579626560211), gap=0.38658830573442754)
+[DEBUG] [1790946900.051957005] [obstacle_avoidance]: alligning: 0.20454937565154427
+[DEBUG] [1790946900.101079464] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=45.54018170378835, distance=0.5231088399887085), right_can=Can(bearing=-0.18252038435360873, distance=0.33678463101387024), gap=0.3756062207646548)
+[DEBUG] [1790946900.102732725] [obstacle_avoidance]: alligning: 0.21328050752329336
+[DEBUG] [1790946900.152842066] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=45.54018170378835, distance=0.5231088399887085), right_can=Can(bearing=-0.18252038435360873, distance=0.33678463101387024), gap=0.3756062207646548)
+[DEBUG] [1790946900.153298694] [obstacle_avoidance]: alligning: 0.21328050752329336
+[DEBUG] [1790946900.200835475] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=46.541064818157324, distance=0.49908769130706787), right_can=Can(bearing=-1.183403498722555, distance=0.3471762239933014), gap=0.3694613928269412)
+[DEBUG] [1790946900.201264728] [obstacle_avoidance]: alligning: 0.17397919729083758
+[DEBUG] [1790946900.249826683] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=46.541064818157324, distance=0.49908769130706787), right_can=Can(bearing=-1.183403498722555, distance=0.3471762239933014), gap=0.3694613928269412)
+[DEBUG] [1790946900.250098310] [obstacle_avoidance]: alligning: 0.17397919729083758
+[DEBUG] [1790946900.299995316] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=46.541064818157324, distance=0.49908769130706787), right_can=Can(bearing=-1.183403498722555, distance=0.3471762239933014), gap=0.3694613928269412)
+[DEBUG] [1790946900.300223943] [obstacle_avoidance]: alligning: 0.17397919729083758
+[DEBUG] [1790946900.349880280] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=47.04150637534181, distance=0.4826436936855316), right_can=Can(bearing=-4.686494399014009, distance=0.31651005148887634), gap=0.37932030965243774)
+[DEBUG] [1790946900.350106573] [obstacle_avoidance]: alligning: 0.1750055546492788
+[DEBUG] [1790946900.399882370] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=47.04150637534181, distance=0.4826436936855316), right_can=Can(bearing=-4.686494399014009, distance=0.31651005148887634), gap=0.37932030965243774)
+[DEBUG] [1790946900.400179831] [obstacle_avoidance]: alligning: 0.1750055546492788
+[DEBUG] [1790946900.452315102] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=47.04150637534181, distance=0.4826436936855316), right_can=Can(bearing=-4.686494399014009, distance=0.31651005148887634), gap=0.37932030965243774)
+[DEBUG] [1790946900.452673521] [obstacle_avoidance]: alligning: 0.1750055546492788
+[DEBUG] [1790946900.500075010] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=47.04150637534181, distance=0.4826436936855316), right_can=Can(bearing=-4.686494399014009, distance=0.31651005148887634), gap=0.37932030965243774)
+[DEBUG] [1790946900.500821890] [obstacle_avoidance]: alligning: 0.1750055546492788
+[DEBUG] [1790946900.549761556] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=45.03974014660386, distance=0.45886725187301636), right_can=Can(bearing=-9.690909970858854, distance=0.30860987305641174), gap=0.3771749364903023)
+[DEBUG] [1790946900.549998807] [obstacle_avoidance]: alligning: 0.15287216876957666
+[DEBUG] [1790946900.599792104] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=45.03974014660386, distance=0.45886725187301636), right_can=Can(bearing=-9.690909970858854, distance=0.30860987305641174), gap=0.3771749364903023)
+[DEBUG] [1790946900.600207649] [obstacle_avoidance]: alligning: 0.15287216876957666
+[DEBUG] [1790946900.649971404] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=45.03974014660386, distance=0.45886725187301636), right_can=Can(bearing=-9.690909970858854, distance=0.30860987305641174), gap=0.3771749364903023)
+[DEBUG] [1790946900.650338490] [obstacle_avoidance]: alligning: 0.15287216876957666
+[DEBUG] [1790946900.699840701] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=42.03709080349694, distance=0.4231220781803131), right_can=Can(bearing=-15.1957670998882, distance=0.32871636748313904), gap=0.36950176750788877)
+[DEBUG] [1790946900.700395372] [obstacle_avoidance]: alligning: 0.09604533595472112
+[DEBUG] [1790946900.749814708] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=42.03709080349694, distance=0.4231220781803131), right_can=Can(bearing=-15.1957670998882, distance=0.32871636748313904), gap=0.36950176750788877)
+[DEBUG] [1790946900.750109793] [obstacle_avoidance]: alligning: 0.09604533595472112
+[DEBUG] [1790946900.802203439] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=42.03709080349694, distance=0.4231220781803131), right_can=Can(bearing=-15.1957670998882, distance=0.32871636748313904), gap=0.36950176750788877)
+[DEBUG] [1790946900.802433690] [obstacle_avoidance]: alligning: 0.09604533595472112
+[DEBUG] [1790946900.849813012] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.5348830175745, distance=0.40214967727661133), right_can=Can(bearing=-19.1992995573641, distance=0.3419918715953827), gap=0.36867617888590265)
+[DEBUG] [1790946900.850060931] [obstacle_avoidance]: alligning: 0.06071171024887938
+[DEBUG] [1790946900.899916020] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.5348830175745, distance=0.40214967727661133), right_can=Can(bearing=-19.1992995573641, distance=0.3419918715953827), gap=0.36867617888590265)
+[DEBUG] [1790946900.900134855] [obstacle_avoidance]: alligning: 0.06071171024887938
+[DEBUG] [1790946900.955826442] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=39.5348830175745, distance=0.40214967727661133), right_can=Can(bearing=-19.1992995573641, distance=0.3419918715953827), gap=0.36867617888590265)
+[DEBUG] [1790946900.956056193] [obstacle_avoidance]: alligning: 0.06071171024887938
+[DEBUG] [1790946901.001359709] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.40982189774513245), right_can=Can(bearing=-21.70150734328655, distance=0.3468470573425293), gap=0.3807550859610951)
+[DEBUG] [1790946901.003066304] [obstacle_avoidance]: alligning: 0.06257448480821987
+[DEBUG] [1790946901.049832331] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.40982189774513245), right_can=Can(bearing=-21.70150734328655, distance=0.3468470573425293), gap=0.3807550859610951)
+[DEBUG] [1790946901.050074999] [obstacle_avoidance]: alligning: 0.06257448480821987
+[DEBUG] [1790946901.100056922] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=38.03355834602104, distance=0.40982189774513245), right_can=Can(bearing=-21.70150734328655, distance=0.3468470573425293), gap=0.3807550859610951)
+[DEBUG] [1790946901.100293299] [obstacle_avoidance]: alligning: 0.06257448480821987
+[DEBUG] [1790946901.149724218] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.032675231652064, distance=0.3919883072376251), right_can=Can(bearing=-23.20283201484, distance=0.3415522575378418), gap=0.3706515742186241)
+[DEBUG] [1790946901.150073304] [obstacle_avoidance]: turning: 9.2 deg, stuck 0
+[DEBUG] [1790946901.202357993] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.032675231652064, distance=0.3919883072376251), right_can=Can(bearing=-23.20283201484, distance=0.3415522575378418), gap=0.3706515742186241)
+[DEBUG] [1790946901.202733412] [obstacle_avoidance]: turning: 9.2 deg, stuck 1
+[DEBUG] [1790946901.251109241] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.032675231652064, distance=0.3919883072376251), right_can=Can(bearing=-23.20283201484, distance=0.3415522575378418), gap=0.3706515742186241)
+[DEBUG] [1790946901.253939261] [obstacle_avoidance]: turning: 9.2 deg, stuck 2
+[DEBUG] [1790946901.299857656] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=37.032675231652064, distance=0.3919883072376251), right_can=Can(bearing=-23.20283201484, distance=0.3415522575378418), gap=0.3706515742186241)
+[DEBUG] [1790946901.300483619] [obstacle_avoidance]: turning: 9.2 deg, stuck 3
+[DEBUG] [1790946901.349967997] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=35.030909002914115, distance=0.38072896003723145), right_can=Can(bearing=-25.204598243577948, distance=0.34864726662635803), gap=0.3670360915062915)
+[DEBUG] [1790946901.350476084] [obstacle_avoidance]: turning: 6.4 deg, stuck 0
+[DEBUG] [1790946901.399731711] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=35.030909002914115, distance=0.38072896003723145), right_can=Can(bearing=-25.204598243577948, distance=0.34864726662635803), gap=0.3670360915062915)
+[DEBUG] [1790946901.400088421] [obstacle_avoidance]: turning: 6.4 deg, stuck 1
+[DEBUG] [1790946901.459428783] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.53046744572963, distance=0.3813543915748596), right_can=Can(bearing=-26.20548135794695, distance=0.34570854902267456), gap=0.3688522443946911)
+[DEBUG] [1790946901.461423755] [obstacle_avoidance]: turning: 5.8 deg, stuck 0
+[DEBUG] [1790946901.500066185] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.53046744572963, distance=0.3813543915748596), right_can=Can(bearing=-26.20548135794695, distance=0.34570854902267456), gap=0.3688522443946911)
+[DEBUG] [1790946901.500974316] [obstacle_avoidance]: turning: 5.8 deg, stuck 1
+[DEBUG] [1790946901.549986857] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.53046744572963, distance=0.3813543915748596), right_can=Can(bearing=-26.20548135794695, distance=0.34570854902267456), gap=0.3688522443946911)
+[DEBUG] [1790946901.550225276] [obstacle_avoidance]: turning: 5.8 deg, stuck 2
+[DEBUG] [1790946901.600320200] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.53046744572963, distance=0.3813543915748596), right_can=Can(bearing=-26.20548135794695, distance=0.34570854902267456), gap=0.3688522443946911)
+[DEBUG] [1790946901.601175164] [obstacle_avoidance]: turning: 5.8 deg, stuck 3
+[DEBUG] [1790946901.649935162] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.39086654782295227), right_can=Can(bearing=-26.20548135794695, distance=0.3480224907398224), gap=0.37260644265974235)
+[DEBUG] [1790946901.650419999] [obstacle_avoidance]: turning: 5.8 deg, stuck 0
+[DEBUG] [1790946901.700176504] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.39086654782295227), right_can=Can(bearing=-26.20548135794695, distance=0.3480224907398224), gap=0.37260644265974235)
+[DEBUG] [1790946901.700796383] [obstacle_avoidance]: turning: 5.8 deg, stuck 1
+[DEBUG] [1790946901.750951391] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.3942343592643738), right_can=Can(bearing=-26.20548135794695, distance=0.35203006863594055), gap=0.3762349861265772)
+[DEBUG] [1790946901.754001120] [obstacle_avoidance]: turning: 5.8 deg, stuck 2
+[DEBUG] [1790946901.800987815] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.3942343592643738), right_can=Can(bearing=-26.20548135794695, distance=0.35203006863594055), gap=0.3762349861265772)
+[DEBUG] [1790946901.801467735] [obstacle_avoidance]: turning: 5.8 deg, stuck 3
+[DEBUG] [1790946901.849826022] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.3942343592643738), right_can=Can(bearing=-26.20548135794695, distance=0.35203006863594055), gap=0.3762349861265772)
+[DEBUG] [1790946901.850089649] [obstacle_avoidance]: turning: 5.8 deg, stuck 4
+[DEBUG] [1790946901.902860424] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.3755396604537964), right_can=Can(bearing=-26.705922915131453, distance=0.3704862594604492), gap=0.37717978460424684)
+[DEBUG] [1790946901.903116051] [obstacle_avoidance]: turning: 3.9 deg, stuck 0
+[DEBUG] [1790946901.949909411] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.3755396604537964), right_can=Can(bearing=-26.705922915131453, distance=0.3704862594604492), gap=0.37717978460424684)
+[DEBUG] [1790946901.950667749] [obstacle_avoidance]: turning: 3.9 deg, stuck 1
+[DEBUG] [1790946902.003142981] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.3755396604537964), right_can=Can(bearing=-26.705922915131453, distance=0.3704862594604492), gap=0.37717978460424684)
+[DEBUG] [1790946902.008874103] [obstacle_avoidance]: turning: 3.9 deg, stuck 2
+[DEBUG] [1790946902.051777770] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.392578125), right_can=Can(bearing=-26.705922915131453, distance=0.34005287289619446), gap=0.3731449634966125)
+[DEBUG] [1790946902.052408900] [obstacle_avoidance]: alligning: 0.05156391165374739
+[DEBUG] [1790946902.104191169] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.392578125), right_can=Can(bearing=-26.705922915131453, distance=0.34005287289619446), gap=0.3731449634966125)
+[DEBUG] [1790946902.104928007] [obstacle_avoidance]: alligning: 0.05156391165374739
+[DEBUG] [1790946902.149812396] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.38518407940864563), right_can=Can(bearing=-26.705922915131453, distance=0.3447798490524292), gap=0.3706773057123168)
+[DEBUG] [1790946902.150057647] [obstacle_avoidance]: turning: 5.5 deg, stuck 5
+[DEBUG] [1790946902.199961404] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.38518407940864563), right_can=Can(bearing=-26.705922915131453, distance=0.3447798490524292), gap=0.3706773057123168)
+[DEBUG] [1790946902.200376740] [obstacle_avoidance]: turning: 5.5 deg, stuck 6
+[DEBUG] [1790946902.249846118] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=34.03002588854514, distance=0.38518407940864563), right_can=Can(bearing=-26.705922915131453, distance=0.3447798490524292), gap=0.3706773057123168)
+[DEBUG] [1790946902.250437205] [obstacle_avoidance]: turning: 5.5 deg, stuck 7
+[DEBUG] [1790946902.299852042] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.37591996788978577), right_can=Can(bearing=-27.7068060295004, distance=0.36319699883461), gap=0.3738229609831875)
+[DEBUG] [1790946902.300415212] [obstacle_avoidance]: turning: 3.2 deg, stuck 0
+[DEBUG] [1790946902.353953201] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.37591996788978577), right_can=Can(bearing=-27.7068060295004, distance=0.36319699883461), gap=0.3738229609831875)
+[DEBUG] [1790946902.354206620] [obstacle_avoidance]: turning: 3.2 deg, stuck 1
+[DEBUG] [1790946902.399860139] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.37591996788978577), right_can=Can(bearing=-27.7068060295004, distance=0.36319699883461), gap=0.3738229609831875)
+[DEBUG] [1790946902.400454059] [obstacle_avoidance]: turning: 3.2 deg, stuck 2
+[DEBUG] [1790946902.449832062] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.3668055534362793), right_can=Can(bearing=-27.7068060295004, distance=0.33628350496292114), gap=0.3564219747235247)
+[DEBUG] [1790946902.450097231] [obstacle_avoidance]: turning: 4.1 deg, stuck 3
+[DEBUG] [1790946902.499811569] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.3668055534362793), right_can=Can(bearing=-27.7068060295004, distance=0.33628350496292114), gap=0.3564219747235247)
+[DEBUG] [1790946902.500083237] [obstacle_avoidance]: turning: 4.1 deg, stuck 4
+[DEBUG] [1790946902.556074493] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.4108566641807556), right_can=Can(bearing=-27.7068060295004, distance=0.3528231382369995), gap=0.38931288376323125)
+[DEBUG] [1790946902.559600059] [obstacle_avoidance]: alligning: 0.05691955426433672
+[DEBUG] [1790946902.599977959] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.4108566641807556), right_can=Can(bearing=-27.7068060295004, distance=0.3528231382369995), gap=0.38931288376323125)
+[DEBUG] [1790946902.600239377] [obstacle_avoidance]: alligning: 0.05691955426433672
+[DEBUG] [1790946902.650043049] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.4108566641807556), right_can=Can(bearing=-27.7068060295004, distance=0.3528231382369995), gap=0.38931288376323125)
+[DEBUG] [1790946902.650281259] [obstacle_avoidance]: alligning: 0.05691955426433672
+[DEBUG] [1790946902.699918680] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.3867918848991394), right_can=Can(bearing=-28.2072475866849, distance=0.35099440813064575), gap=0.3770261317291782)
+[DEBUG] [1790946902.700637435] [obstacle_avoidance]: turning: 4.1 deg, stuck 0
+[DEBUG] [1790946902.749873020] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.3867918848991394), right_can=Can(bearing=-28.2072475866849, distance=0.35099440813064575), gap=0.3770261317291782)
+[DEBUG] [1790946902.750203022] [obstacle_avoidance]: turning: 4.1 deg, stuck 1
+[DEBUG] [1790946902.799896236] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=33.029142774176165, distance=0.3867918848991394), right_can=Can(bearing=-28.2072475866849, distance=0.35099440813064575), gap=0.3770261317291782)
+[DEBUG] [1790946902.800158696] [obstacle_avoidance]: turning: 4.1 deg, stuck 2
+[DEBUG] [1790946902.849813367] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=32.02825965980719, distance=0.37851405143737793), right_can=Can(bearing=-29.208130701053847, distance=0.3434242606163025), gap=0.3689317524561007)
+[DEBUG] [1790946902.850073702] [obstacle_avoidance]: turning: 3.1 deg, stuck 0
+[DEBUG] [1790946902.899914499] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=32.02825965980719, distance=0.37851405143737793), right_can=Can(bearing=-29.208130701053847, distance=0.3434242606163025), gap=0.3689317524561007)
+[DEBUG] [1790946902.900175168] [obstacle_avoidance]: turning: 3.1 deg, stuck 1
+[DEBUG] [1790946902.951056347] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=32.02825965980719, distance=0.37851405143737793), right_can=Can(bearing=-29.208130701053847, distance=0.3434242606163025), gap=0.3689317524561007)
+[DEBUG] [1790946902.951311474] [obstacle_avoidance]: turning: 3.1 deg, stuck 2
+[DEBUG] [1790946902.999989889] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=32.02825965980719, distance=0.37402594089508057), right_can=Can(bearing=-29.208130701053847, distance=0.35980504751205444), gap=0.37395124587499723)
+[DEBUG] [1790946903.000471809] [obstacle_avoidance]: lined up (2.1 deg off), driving 0.886 m
+[DEBUG] [1790946903.049492142] [obstacle_avoidance]: through: 0.886 m left, off centre by +0.011
+[DEBUG] [1790946903.100036486] [obstacle_avoidance]: through: 0.884 m left, off centre by +0.011
+[DEBUG] [1790946903.151887131] [obstacle_avoidance]: through: 0.880 m left, off centre by +0.009
+[DEBUG] [1790946903.202072472] [obstacle_avoidance]: through: 0.874 m left, off centre by +0.009
+[DEBUG] [1790946903.249704255] [obstacle_avoidance]: through: 0.866 m left, off centre by +0.009
+[DEBUG] [1790946903.300101431] [obstacle_avoidance]: through: 0.856 m left, off centre by +0.014
+[DEBUG] [1790946903.353781255] [obstacle_avoidance]: through: 0.844 m left, off centre by +0.014
+[DEBUG] [1790946903.399704943] [obstacle_avoidance]: through: 0.830 m left, off centre by +0.018
+[DEBUG] [1790946903.449941118] [obstacle_avoidance]: through: 0.814 m left, off centre by +0.018
+[DEBUG] [1790946903.501991472] [obstacle_avoidance]: through: 0.796 m left, off centre by +0.018
+[DEBUG] [1790946903.566737080] [obstacle_avoidance]: through: 0.776 m left, off centre by +0.011
+[DEBUG] [1790946903.600011431] [obstacle_avoidance]: through: 0.756 m left, off centre by +0.011
+[DEBUG] [1790946903.649667519] [obstacle_avoidance]: through: 0.736 m left, off centre by +0.011
+[DEBUG] [1790946903.699466191] [obstacle_avoidance]: through: 0.716 m left, off centre by +0.016
+[DEBUG] [1790946903.749895451] [obstacle_avoidance]: through: 0.696 m left, off centre by +0.016
+[DEBUG] [1790946903.806780172] [obstacle_avoidance]: through: 0.676 m left, off centre by +0.016
+[DEBUG] [1790946903.850132342] [obstacle_avoidance]: through: 0.656 m left, off centre by +0.018
+[DEBUG] [1790946903.899736305] [obstacle_avoidance]: through: 0.636 m left, off centre by +0.018
+[DEBUG] [1790946903.949491685] [obstacle_avoidance]: through: 0.616 m left, off centre by +0.020
+[DEBUG] [1790946903.999785527] [obstacle_avoidance]: through: 0.596 m left, off centre by +0.020
+[DEBUG] [1790946904.050024119] [obstacle_avoidance]: through: 0.576 m left, off centre by +0.020
+[DEBUG] [1790946904.101003883] [obstacle_avoidance]: through: 0.556 m left, off centre by +0.009
+[DEBUG] [1790946904.150760055] [obstacle_avoidance]: through: 0.536 m left, off centre by +0.009
+[DEBUG] [1790946904.201205149] [obstacle_avoidance]: through: 0.516 m left, off centre by +0.009
+[DEBUG] [1790946904.249653729] [obstacle_avoidance]: through: 0.496 m left, off centre by +0.011
+[DEBUG] [1790946904.302824424] [obstacle_avoidance]: through: 0.476 m left, off centre by +0.011
+[DEBUG] [1790946904.349736035] [obstacle_avoidance]: through: 0.456 m left, off centre by +0.012
+[DEBUG] [1790946904.399818001] [obstacle_avoidance]: through: 0.436 m left, off centre by +0.012
+[DEBUG] [1790946904.449863759] [obstacle_avoidance]: through: 0.416 m left, off centre by +0.012
+[DEBUG] [1790946904.501361734] [obstacle_avoidance]: through: 0.396 m left, off centre by +0.003
+[DEBUG] [1790946904.559857466] [obstacle_avoidance]: through: 0.376 m left, off centre by +0.003
+[DEBUG] [1790946904.599689820] [obstacle_avoidance]: through: 0.356 m left, off centre by +0.003
+[DEBUG] [1790946904.654829904] [obstacle_avoidance]: through: 0.336 m left, off centre by +0.003
+[DEBUG] [1790946904.699840711] [obstacle_avoidance]: through: 0.316 m left, off centre by +0.000
+[DEBUG] [1790946904.749860468] [obstacle_avoidance]: through: 0.296 m left, off centre by +0.000
+[DEBUG] [1790946904.802446826] [obstacle_avoidance]: through: 0.276 m left, off centre by +0.000
+[DEBUG] [1790946904.849834357] [obstacle_avoidance]: through: 0.256 m left, off centre by +0.000
+[DEBUG] [1790946904.899871781] [obstacle_avoidance]: through: 0.236 m left, off centre by +0.000
+[DEBUG] [1790946904.950992379] [obstacle_avoidance]: through: 0.216 m left, off centre by +0.000
+[DEBUG] [1790946905.001043387] [obstacle_avoidance]: through: 0.196 m left, off centre by +0.000
+[DEBUG] [1790946905.049728968] [obstacle_avoidance]: through: 0.176 m left, off centre by +0.000
+[DEBUG] [1790946905.099768643] [obstacle_avoidance]: through: 0.156 m left, off centre by +0.000
+[DEBUG] [1790946905.149718024] [obstacle_avoidance]: through: 0.136 m left, off centre by +0.000
+[DEBUG] [1790946905.199741532] [obstacle_avoidance]: through: 0.116 m left, off centre by +0.000
+[DEBUG] [1790946905.249810456] [obstacle_avoidance]: through: 0.096 m left, off centre by +0.000
+[DEBUG] [1790946905.299788880] [obstacle_avoidance]: through: 0.076 m left, off centre by +0.000
+[DEBUG] [1790946905.350755644] [obstacle_avoidance]: through: 0.056 m left, off centre by +0.000
+[DEBUG] [1790946905.399669394] [obstacle_avoidance]: through: 0.036 m left, off centre by +0.000
+[DEBUG] [1790946905.449737527] [obstacle_avoidance]: through: 0.016 m left, off centre by +0.000
+[DEBUG] [1790946905.499785701] [obstacle_avoidance]: through: -0.004 m left, off centre by +0.000
+[DEBUG] [1790946905.548783076] [obstacle_avoidance]: turning back: 12.7 deg
+[DEBUG] [1790946905.598837834] [obstacle_avoidance]: turning back: 11.3 deg
+[DEBUG] [1790946905.650819313] [obstacle_avoidance]: turning back: 9.8 deg
+[DEBUG] [1790946905.698807598] [obstacle_avoidance]: turning back: 8.4 deg
+[DEBUG] [1790946905.749008815] [obstacle_avoidance]: turning back: 7.0 deg
+[DEBUG] [1790946905.798840280] [obstacle_avoidance]: turning back: 5.5 deg
+[DEBUG] [1790946905.849282998] [obstacle_avoidance]: turning back: 4.1 deg
+[DEBUG] [1790946905.898851294] [obstacle_avoidance]: turning back: 2.7 deg
+[DEBUG] [1790946905.951130400] [obstacle_avoidance]: turning back: 1.2 deg
+[DEBUG] [1790946906.001087866] [obstacle_avoidance]: through the gap
+[DEBUG] [1790946922.802252624] [obstacle_avoidance]: picked: DoorWay(left_can=Can(bearing=10.509272700874234, distance=0.30673906207084656), right_can=Can(bearing=-42.72005274503505, distance=0.47802650928497314), gap=0.3834702870610584)
+[DEBUG] [1790946922.805033393] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=10.509272700874234, distance=0.30673906207084656), right_can=Can(bearing=-42.72005274503505, distance=0.47802650928497314), gap=0.3834702870610584)
+[DEBUG] [1790946922.805260603] [obstacle_avoidance]: alligning: -0.17526845744592287
+[DEBUG] [1790946922.849958618] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=10.509272700874234, distance=0.30673906207084656), right_can=Can(bearing=-42.72005274503505, distance=0.47802650928497314), gap=0.3834702870610584)
+[DEBUG] [1790946922.850212161] [obstacle_avoidance]: alligning: -0.17526845744592287
+[DEBUG] [1790946922.901195969] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=10.509272700874234, distance=0.30673906207084656), right_can=Can(bearing=-42.72005274503505, distance=0.47802650928497314), gap=0.3834702870610584)
+[DEBUG] [1790946922.901482638] [obstacle_avoidance]: alligning: -0.17526845744592287
+[DEBUG] [1790946922.949860886] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=17.01501294427257, distance=0.3108728229999542), right_can=Can(bearing=-39.717403401928095, distance=0.45571091771125793), gap=0.385863030400825)
+[DEBUG] [1790946922.950417015] [obstacle_avoidance]: alligning: -0.1438729804277184
+[DEBUG] [1790946922.999818270] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=17.01501294427257, distance=0.3108728229999542), right_can=Can(bearing=-39.717403401928095, distance=0.45571091771125793), gap=0.385863030400825)
+[DEBUG] [1790946923.000041314] [obstacle_avoidance]: alligning: -0.1438729804277184
+[DEBUG] [1790946923.052928301] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=22.019428516117443, distance=0.29612717032432556), right_can=Can(bearing=-36.7147540588212, distance=0.4212360382080078), gap=0.36830593051715554)
+[DEBUG] [1790946923.053145636] [obstacle_avoidance]: alligning: -0.12183960594235622
+[DEBUG] [1790946923.099884998] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=22.019428516117443, distance=0.29612717032432556), right_can=Can(bearing=-36.7147540588212, distance=0.4212360382080078), gap=0.36830593051715554)
+[DEBUG] [1790946923.102742060] [obstacle_avoidance]: alligning: -0.12183960594235622
+[DEBUG] [1790946923.150114385] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=22.019428516117443, distance=0.29612717032432556), right_can=Can(bearing=-36.7147540588212, distance=0.4212360382080078), gap=0.36830593051715554)
+[DEBUG] [1790946923.150329636] [obstacle_avoidance]: alligning: -0.12183960594235622
+[DEBUG] [1790946923.199884184] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=26.52340253077783, distance=0.33833712339401245), right_can=Can(bearing=-33.211663158529745, distance=0.40068212151527405), gap=0.37197882785357317)
+[DEBUG] [1790946923.200312312] [obstacle_avoidance]: alligning: -0.061931150357813325
+[DEBUG] [1790946923.251799915] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=30.02649343106924, distance=0.33722802996635437), right_can=Can(bearing=-30.70945537260735, distance=0.39397239685058594), gap=0.37288756624709346)
+[DEBUG] [1790946923.253736304] [obstacle_avoidance]: alligning: -0.055635410028277626
+[DEBUG] [1790946923.299980871] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=30.02649343106924, distance=0.33722802996635437), right_can=Can(bearing=-30.70945537260735, distance=0.39397239685058594), gap=0.37288756624709346)
+[DEBUG] [1790946923.300226122] [obstacle_avoidance]: alligning: -0.055635410028277626
+[DEBUG] [1790946923.353175819] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=30.02649343106924, distance=0.33722802996635437), right_can=Can(bearing=-30.70945537260735, distance=0.39397239685058594), gap=0.37288756624709346)
+[DEBUG] [1790946923.353409279] [obstacle_avoidance]: alligning: -0.055635410028277626
+[DEBUG] [1790946923.400068099] [obstacle_avoidance]: repick: DoorWay(left_can=Can(bearing=32.52870121699168, distance=0.3452012538909912), right_can=Can(bearing=-28.707689143869402, distance=0.38309988379478455), gap=0.37236558476969644)
+[DEBUG] [1790946923.400706687] [obstacle_avoidance]: lined up (0.1 deg off), driving 0.884 m
+[DEBUG] [1790946923.449788107] [obstacle_avoidance]: through: 0.884 m left, off centre by +0.001
+[DEBUG] [1790946923.499739908] [obstacle_avoidance]: through: 0.882 m left, off centre by +0.001
+[DEBUG] [1790946923.560919786] [obstacle_avoidance]: through: 0.878 m left, off centre by +0.001
+[DEBUG] [1790946923.599893595] [obstacle_avoidance]: through: 0.872 m left, off centre by +0.001
+[DEBUG] [1790946923.649707228] [obstacle_avoidance]: through: 0.864 m left, off centre by +0.007
+[DEBUG] [1790946923.702102546] [obstacle_avoidance]: through: 0.854 m left, off centre by +0.007
+[DEBUG] [1790946923.749711039] [obstacle_avoidance]: through: 0.842 m left, off centre by -0.001
+[DEBUG] [1790946923.800860265] [obstacle_avoidance]: through: 0.828 m left, off centre by -0.001
+[DEBUG] [1790946923.852167825] [obstacle_avoidance]: through: 0.812 m left, off centre by -0.001
+[DEBUG] [1790946923.899757026] [obstacle_avoidance]: through: 0.794 m left, off centre by +0.005
+[DEBUG] [1790946923.951127087] [obstacle_avoidance]: through: 0.774 m left, off centre by +0.005
+[DEBUG] [1790946924.002643149] [obstacle_avoidance]: through: 0.754 m left, off centre by +0.005
+[DEBUG] [1790946924.049762514] [obstacle_avoidance]: through: 0.734 m left, off centre by +0.006
+[DEBUG] [1790946924.100348902] [obstacle_avoidance]: through: 0.714 m left, off centre by +0.006
+[DEBUG] [1790946924.149854325] [obstacle_avoidance]: through: 0.694 m left, off centre by +0.006
+[DEBUG] [1790946924.199767126] [obstacle_avoidance]: through: 0.674 m left, off centre by -0.003
+[DEBUG] [1790946924.252284403] [obstacle_avoidance]: through: 0.654 m left, off centre by -0.003
+[DEBUG] [1790946924.299876146] [obstacle_avoidance]: through: 0.634 m left, off centre by -0.003
+[DEBUG] [1790946924.350332118] [obstacle_avoidance]: through: 0.614 m left, off centre by +0.008
+[DEBUG] [1790946924.399733915] [obstacle_avoidance]: through: 0.594 m left, off centre by +0.008
+[DEBUG] [1790946924.450896558] [obstacle_avoidance]: through: 0.574 m left, off centre by +0.008
+[DEBUG] [1790946924.502962540] [obstacle_avoidance]: through: 0.554 m left, off centre by -0.007
+[DEBUG] [1790946924.551306205] [obstacle_avoidance]: through: 0.534 m left, off centre by -0.007
+[DEBUG] [1790946924.599939622] [obstacle_avoidance]: through: 0.514 m left, off centre by -0.007
+[DEBUG] [1790946924.650339634] [obstacle_avoidance]: through: 0.494 m left, off centre by -0.002
+[DEBUG] [1790946924.703383332] [obstacle_avoidance]: through: 0.474 m left, off centre by -0.002
+[DEBUG] [1790946924.749823775] [obstacle_avoidance]: through: 0.454 m left, off centre by -0.002
+[DEBUG] [1790946924.799854119] [obstacle_avoidance]: through: 0.434 m left, off centre by -0.005
+[DEBUG] [1790946924.852396063] [obstacle_avoidance]: through: 0.414 m left, off centre by -0.005
+[DEBUG] [1790946924.900600393] [obstacle_avoidance]: through: 0.394 m left, off centre by -0.005
+[DEBUG] [1790946924.949919732] [obstacle_avoidance]: through: 0.374 m left, off centre by +0.008
+[DEBUG] [1790946925.000817831] [obstacle_avoidance]: through: 0.354 m left, off centre by +0.008
+[DEBUG] [1790946925.049765834] [obstacle_avoidance]: through: 0.334 m left, off centre by +0.000
+[DEBUG] [1790946925.099738010] [obstacle_avoidance]: through: 0.314 m left, off centre by +0.000
+[DEBUG] [1790946925.151664991] [obstacle_avoidance]: through: 0.294 m left, off centre by +0.000
+[DEBUG] [1790946925.200812745] [obstacle_avoidance]: through: 0.274 m left, off centre by +0.000
+[DEBUG] [1790946925.251213216] [obstacle_avoidance]: through: 0.254 m left, off centre by +0.000
+[DEBUG] [1790946925.300327970] [obstacle_avoidance]: through: 0.234 m left, off centre by +0.000
+[DEBUG] [1790946925.351985033] [obstacle_avoidance]: through: 0.214 m left, off centre by +0.000
+[DEBUG] [1790946925.399653652] [obstacle_avoidance]: through: 0.194 m left, off centre by +0.000
+[DEBUG] [1790946925.452867851] [obstacle_avoidance]: through: 0.174 m left, off centre by +0.000
+[DEBUG] [1790946925.507140848] [obstacle_avoidance]: through: 0.154 m left, off centre by +0.000
+[DEBUG] [1790946925.550363520] [obstacle_avoidance]: through: 0.134 m left, off centre by +0.000
+[DEBUG] [1790946925.602656004] [obstacle_avoidance]: through: 0.114 m left, off centre by +0.000
+[DEBUG] [1790946925.655828577] [obstacle_avoidance]: through: 0.094 m left, off centre by +0.000
+[DEBUG] [1790946925.699816171] [obstacle_avoidance]: through: 0.074 m left, off centre by +0.000
+[DEBUG] [1790946925.749842222] [obstacle_avoidance]: through: 0.054 m left, off centre by +0.000
+[DEBUG] [1790946925.800318735] [obstacle_avoidance]: through: 0.034 m left, off centre by +0.000
+[DEBUG] [1790946925.849837659] [obstacle_avoidance]: through: 0.014 m left, off centre by +0.000
+[DEBUG] [1790946925.899781418] [obstacle_avoidance]: through: -0.006 m left, off centre by +0.000
+[DEBUG] [1790946925.951143854] [obstacle_avoidance]: through the gap

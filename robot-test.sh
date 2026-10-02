@@ -4,22 +4,46 @@ set -e
 
 # Usage:
 #   ./robot.sh 02
+#   ./robot.sh 02 --skip-setup   (code already on robot, skip sync + build)
 #
 # 02 -> 192.168.1.202
 # 15 -> 192.168.1.215
 
-if [[ $# -ne 1 || ! "$1" =~ ^[0-9]{2}$ ]]; then
-    echo "Usage: $0 <2-digit robot number>"
+usage() {
+    echo "Usage: $0 <2-digit robot number> [-s|--skip-setup]"
     echo "Example: $0 02"
+    echo "  -s, --skip-setup   skip workspace creation, sync and build"
     exit 1
-fi
+}
 
-ROBOT_NUM="$1"
+ROBOT_NUM=""
+SKIP_SETUP=0
+
+for arg in "$@"; do
+    case "$arg" in
+        -s|--skip-setup)
+            SKIP_SETUP=1
+            ;;
+        [0-9][0-9])
+            [[ -n "$ROBOT_NUM" ]] && usage
+            ROBOT_NUM="$arg"
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+
+[[ -z "$ROBOT_NUM" ]] && usage
+
 ROBOT_IP="192.168.1.2${ROBOT_NUM}"
 ROBOT_USER="bingda"
 ROBOT_PASS="bingda"
 
 LOCAL_SRC="$HOME/Projects/rb2301_ca1/src/rb2301_ca1"
+
+# Everything the obstacle avoidance node prints, saved next to this script
+LOG_FILE="$(cd "$(dirname "$0")" && pwd)/out.txt"
 
 REMOTE_WS="/home/bingda/Downloads/rb2301_ca1-11"
 REMOTE_SRC="$REMOTE_WS/src"
@@ -28,6 +52,7 @@ REMOTE_SRC="$REMOTE_WS/src"
 START_FILE="/tmp/rb2301_obstacle.start"
 PID_FILE="/tmp/rb2301_obstacle.pid"
 QUIT_FILE="/tmp/rb2301_quit"
+RESTART_FILE="/tmp/rb2301_obstacle.restart"
 
 SSH="sshpass -p ${ROBOT_PASS} ssh -o StrictHostKeyChecking=no"
 RSYNC_RSH="sshpass -p ${ROBOT_PASS} ssh -o StrictHostKeyChecking=no"
@@ -39,52 +64,63 @@ echo "IP:    ${ROBOT_IP}"
 echo "================================"
 
 
-# ==================================================
-# 1. Create workspace
-# ==================================================
+if [[ $SKIP_SETUP -eq 0 ]]; then
 
-echo "Creating workspace..."
+    # ==================================================
+    # 1. Create workspace
+    # ==================================================
 
-$SSH "${ROBOT_USER}@${ROBOT_IP}" \
-    "mkdir -p ${REMOTE_SRC}"
+    echo "Creating workspace..."
 
-
-# ==================================================
-# 2. Sync source
-# ==================================================
-
-echo "Syncing source..."
-
-rsync -auvx --delete \
-    -e "$RSYNC_RSH" \
-    "$LOCAL_SRC" \
-    "${ROBOT_USER}@${ROBOT_IP}:${REMOTE_SRC}"
+    $SSH "${ROBOT_USER}@${ROBOT_IP}" \
+        "mkdir -p ${REMOTE_SRC}"
 
 
-# ==================================================
-# 3. Build
-# ==================================================
+    # ==================================================
+    # 2. Sync source
+    # ==================================================
 
-echo "Building workspace..."
+    echo "Syncing source..."
 
-$SSH "${ROBOT_USER}@${ROBOT_IP}" "
-    cd ${REMOTE_WS} &&
-    colcon build --symlink-install
-"
+    rsync -auvx --delete \
+        -e "$RSYNC_RSH" \
+        "$LOCAL_SRC" \
+        "${ROBOT_USER}@${ROBOT_IP}:${REMOTE_SRC}"
+
+
+    # ==================================================
+    # 3. Build
+    # ==================================================
+
+    echo "Building workspace..."
+
+    $SSH "${ROBOT_USER}@${ROBOT_IP}" "
+        cd ${REMOTE_WS} &&
+        colcon build --symlink-install
+    "
+
+    echo "Build complete."
+
+else
+    echo "Skipping workspace setup, sync and build."
+fi
 
 
 # ==================================================
 # 4. Remove old control files
+#
+# Always runs: a leftover QUIT_FILE from the last
+# session would make every terminal exit at once.
 # ==================================================
 
 $SSH "${ROBOT_USER}@${ROBOT_IP}" "
     rm -f ${START_FILE}
     rm -f ${PID_FILE}
     rm -f ${QUIT_FILE}
+    rm -f ${RESTART_FILE}
 "
 
 
-echo "Build complete."
 echo "Opening terminals..."
 
 
@@ -196,64 +232,88 @@ gnome-terminal \
             echo \\\" Obstacle Avoidance OUTPUT\\\"
             echo \\\"================================\\\"
             echo
-            echo \\\"Waiting for START...\\\"
+            # Loop so the control terminal can restart the node
+            while true; do
 
-            # Wait until control terminal starts us
-            while [ ! -f ${START_FILE} ]; do
+                echo \\\"Waiting for START...\\\"
 
-                # Allow global shutdown even before start
+                # Wait until control terminal starts us
+                while [ ! -f ${START_FILE} ]; do
+
+                    # Allow global shutdown even before start
+                    if [ -f ${QUIT_FILE} ]; then
+                        exit 0
+                    fi
+
+                    # Node is not running, so a restart
+                    # request has nothing to stop
+                    rm -f ${RESTART_FILE}
+
+                    sleep 0.1
+
+                done
+
+                rm -f ${START_FILE}
+
+                echo
+                echo \\\"Starting obstacle avoidance...\\\"
+                echo
+
+                setsid ros2 run \
+                    rb2301_ca1 \
+                    obstacle_avoidance \
+                    </dev/null &
+
+                PID=\\\$!
+
+                echo \\\$PID > ${PID_FILE}
+
+                echo \\\"PID: \\\$PID\\\"
+                echo \\\"--------------------------------\\\"
+                echo
+
+                while kill -0 \\\$PID 2>/dev/null; do
+
+                    if [ -f ${QUIT_FILE} ] || [ -f ${RESTART_FILE} ]; then
+
+                        echo
+                        if [ -f ${QUIT_FILE} ]; then
+                            echo \\\"[GLOBAL SHUTDOWN]\\\"
+                        else
+                            echo \\\"[RESTART]\\\"
+                        fi
+
+                        # Make sure paused process is resumed
+                        # so it can receive SIGINT.
+                        kill -CONT -- -\\\$PID 2>/dev/null || true
+
+                        kill -INT -- -\\\$PID 2>/dev/null || true
+
+                        wait \\\$PID 2>/dev/null || true
+
+                        break
+                    fi
+
+                    sleep 0.1
+
+                done
+
+                # Remove PID before RESTART so control
+                # never reads the old PID
+                rm -f ${PID_FILE}
+                rm -f ${RESTART_FILE}
+
                 if [ -f ${QUIT_FILE} ]; then
                     exit 0
                 fi
 
-                sleep 0.1
+                echo
+                echo \\\"================================\\\"
+                echo
 
             done
 
-            rm -f ${START_FILE}
-
-            echo
-            echo \\\"Starting obstacle avoidance...\\\"
-            echo
-
-            setsid ros2 run \
-                rb2301_ca1 \
-                obstacle_avoidance \
-                </dev/null &
-
-            PID=\\\$!
-
-            echo \\\$PID > ${PID_FILE}
-
-            echo \\\"PID: \\\$PID\\\"
-            echo \\\"--------------------------------\\\"
-            echo
-
-            while kill -0 \\\$PID 2>/dev/null; do
-
-                if [ -f ${QUIT_FILE} ]; then
-
-                    echo
-                    echo \\\"[GLOBAL SHUTDOWN]\\\"
-
-                    # Make sure paused process is resumed
-                    # so it can receive SIGINT.
-                    kill -CONT -- -\\\$PID 2>/dev/null || true
-
-                    kill -INT -- -\\\$PID 2>/dev/null || true
-
-                    wait \\\$PID 2>/dev/null || true
-
-                    break
-                fi
-
-                sleep 0.1
-
-            done
-
-            rm -f ${PID_FILE}
-
-        '\"
+        '\" 2>&1 | tee "${LOG_FILE}"
     "
 
 
@@ -263,6 +323,7 @@ gnome-terminal \
 # ENTER -> start
 # s     -> pause
 # r     -> resume
+# t     -> restart obstacle avoidance
 # q     -> GLOBAL SHUTDOWN
 # ==================================================
 
@@ -291,21 +352,28 @@ gnome-terminal \
                 exit 0
             fi
 
-            touch ${START_FILE}
+            # Tell output terminal to start the node,
+            # then wait for its PID
+            start_node() {
 
-            echo \\\"Waiting for obstacle process...\\\"
+                touch ${START_FILE}
 
-            while [ ! -s ${PID_FILE} ]; do
+                echo \\\"Waiting for obstacle process...\\\"
 
-                if [ -f ${QUIT_FILE} ]; then
-                    exit 0
-                fi
+                while [ ! -s ${PID_FILE} ]; do
 
-                sleep 0.1
+                    if [ -f ${QUIT_FILE} ]; then
+                        exit 0
+                    fi
 
-            done
+                    sleep 0.1
 
-            PID=\\\$(cat ${PID_FILE})
+                done
+
+                PID=\\\$(cat ${PID_FILE})
+            }
+
+            start_node
 
             echo
             echo \\\"Obstacle avoidance started.\\\"
@@ -313,6 +381,7 @@ gnome-terminal \
             echo \\\"Commands:\\\"
             echo \\\"  s + ENTER  -> pause\\\"
             echo \\\"  r + ENTER  -> resume\\\"
+            echo \\\"  t + ENTER  -> restart obstacle avoidance\\\"
             echo \\\"  q + ENTER  -> STOP EVERYTHING\\\"
             echo
 
@@ -332,6 +401,22 @@ gnome-terminal \
                         echo \\\"[RESUMED]\\\"
                         ;;
 
+                    t)
+                        echo \\\"[RESTARTING]\\\"
+
+                        # Output terminal stops the node and
+                        # removes this file once it has exited
+                        touch ${RESTART_FILE}
+
+                        while [ -f ${RESTART_FILE} ]; do
+                            sleep 0.1
+                        done
+
+                        start_node
+
+                        echo \\\"[RESTARTED] PID: \\\$PID\\\"
+                        ;;
+
                     q)
                         echo
                         echo \\\"[GLOBAL SHUTDOWN]\\\"
@@ -344,7 +429,7 @@ gnome-terminal \
                         ;;
 
                     *)
-                        echo \\\"Use s, r, or q\\\"
+                        echo \\\"Use s, r, t, or q\\\"
                         ;;
 
                 esac
@@ -357,4 +442,5 @@ gnome-terminal \
 
 echo "================================"
 echo "All 4 terminals opened."
+echo "Node output -> ${LOG_FILE}"
 echo "================================"
